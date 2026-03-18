@@ -1,0 +1,71 @@
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/browser';
+import LockScreen from './LockScreen';
+import UpdatePasswordScreen from './UpdatePasswordScreen';
+
+export default function AuthGuard({ children }: { children: React.ReactNode }) {
+    const [session, setSession] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [isRecovering, setIsRecovering] = useState(false);
+    const supabase = createClient();
+
+    useEffect(() => {
+        // Verifica hash da transição do Supabase
+        if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+            setIsRecovering(true);
+        }
+
+        // Busca a sessão inicial caso o user de F5
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setLoading(false);
+        });
+
+        // Ouve as mudanças de Auth (login / logout)
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                setIsRecovering(true);
+            }
+            setSession(session);
+        });
+
+        return () => subscription.unsubscribe();
+    }, [supabase]);
+
+    // Enquanto verifica a memória/cookies...
+    if (loading) {
+        return (
+            <div className="h-screen w-full flex items-center justify-center bg-[#020202]">
+                <div className="w-4 h-4 rounded-full bg-white/20 animate-ping" />
+            </div>
+        );
+    }
+
+    // Intercepta o fluxo de recuperação de senha ANTES de renderizar o OS
+    if (isRecovering) {
+        return (
+            <UpdatePasswordScreen
+                onComplete={() => {
+                    setIsRecovering(false);
+                    if (typeof window !== 'undefined' && window.location.hash) {
+                        window.history.replaceState(null, '', window.location.pathname);
+                    }
+                }}
+            />
+        );
+    }
+
+    // Se nao tiver sessão, exibe a Tela de Bloqueio interativa
+    if (!session) {
+        return <LockScreen onLogin={() => {
+            // O listener do onAuthStateChange fará o re-render
+        }} />;
+    }
+
+    // Com sessão, passa a renderizar o SO
+    return <>{children}</>;
+}

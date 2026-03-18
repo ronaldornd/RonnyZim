@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --font-fira: var(--font-fira), monospace;
+  --font-tech: var(--font-tech), monospace;
+  
+  --color-primary: #00FF41;
+  --color-secondary: #008F11;
+  --color-tactical: #0D1117;
+  --color-text-hud: #E6EDF3;
+}
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 2, 2, 2;
+  --background-end-rgb: 2, 2, 2;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+}
