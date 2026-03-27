@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -19,9 +20,24 @@ const cardSchema = {
                 },
                 required: ['id', 'title', 'summary', 'detailed_analysis', 'theme']
             }
+        },
+        technical_affinity: {
+            type: Type.OBJECT,
+            properties: {
+                frontend: { type: Type.NUMBER, description: "XP multiplier for frontend tasks (0.8 to 1.2)" },
+                backend: { type: Type.NUMBER, description: "XP multiplier for backend tasks (0.8 to 1.2)" },
+                database: { type: Type.NUMBER, description: "XP multiplier for database tasks (0.8 to 1.2)" },
+                devops: { type: Type.NUMBER, description: "XP multiplier for devops tasks (0.8 to 1.2)" },
+                design: { type: Type.NUMBER, description: "XP multiplier for design tasks (0.8 to 1.2)" }
+            },
+            required: ['frontend', 'backend', 'database', 'devops', 'design']
+        },
+        daily_energy_score: { 
+            type: Type.INTEGER, 
+            description: "A total energy score from 0 to 100 based on the planetary transits for the user today." 
         }
     },
-    required: ['cards']
+    required: ['cards', 'technical_affinity', 'daily_energy_score']
 };
 
 export async function GET(request: Request) {
@@ -30,6 +46,20 @@ export async function GET(request: Request) {
         const rawBirthDate = searchParams.get('birthDate'); // YYYY-MM-DD
         const rawBirthTime = searchParams.get('birthTime'); // HH:mm
         const rawBirthCity = searchParams.get('birthCity'); // e.g. "São Paulo, SP, Brasil"
+
+        let chatModel = 'gemini-3-flash-preview';
+        try {
+            const supabase = await createRouteHandlerClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const { data: facts } = await supabase.from('user_facts').select('value').eq('user_id', session.user.id).eq('property_key', 'preferred_ai_model').limit(1);
+                if (facts && facts.length > 0 && facts[0].value) {
+                    chatModel = facts[0].value;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to resolve preferred model', e);
+        }
 
         const today = new Date().toISOString();
         const todayFormatted = new Date().toLocaleDateString('pt-BR', {
@@ -69,6 +99,12 @@ Today's date: ${todayFormatted} (ISO: ${today})
 
 Your mission: Cross-reference the user's complete natal chart (using birth date, time, and location when provided) with the current astrological season and planetary transits for today. When birth time is provided, consider the Ascendant archetype. When birth city is provided, consider geographic positioning.
 
+Assign a "technical_affinity" multiplier (0.8 to 1.2) for each category based on the day's archetypal resonance:
+- **frontend**: Mercury/Uranus transits, focus on interaction, agility, visual clarity.
+- **backend/database**: Saturn/Pluto transits, focus on structure, stability, hidden logic, persistency.
+- **devops**: Mars/Sun transits, focus on automation, power, flow, infrastructure.
+- **design**: Venus/Neptune transits, focus on aesthetics, harmony, user empathy.
+
 Generate exactly 5 insight cards in valid JSON. Each card must be:
 - Extremely practical and grounded — no vague platitudes
 - Written in Brazilian Portuguese
@@ -84,7 +120,7 @@ Card categories to cover:
 For detailed_analysis, write 3-4 sentences with specific psychological + astrological reasoning. Do NOT use generic horoscope language.`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: chatModel,
             contents: [{ role: 'user', parts: [{ text: 'Generate my astro-analytical daily dashboard for today.' }] }],
             config: {
                 systemInstruction: systemPrompt,

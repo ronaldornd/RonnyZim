@@ -8,6 +8,7 @@ import IdentityMatrix from '@/components/apps/identity/IdentityMatrix';
 import DataVault from '@/components/apps/vault/DataVault';
 import HunterBoard from '@/components/apps/hunter/HunterBoard';
 import AstroDash from '@/components/apps/rndmind/AstroDash';
+import SettingsApp from '@/components/apps/settings/SettingsApp';
 import {
     TerminalSquare,
     Settings2,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function DesktopShell() {
-    const [activeApp, setActiveApp] = useState<'loading' | 'genesis' | 'workspace' | 'identity' | 'vault' | 'hunter' | 'rndmind'>('loading');
+    const [activeApp, setActiveApp] = useState<'loading' | 'genesis' | 'workspace' | 'identity' | 'vault' | 'hunter' | 'rndmind' | 'settings'>('loading');
     const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -97,6 +98,10 @@ export default function DesktopShell() {
                 <div className={activeApp === 'rndmind' ? 'absolute inset-0 z-0' : 'hidden'}>
                     <AstroDash />
                 </div>
+
+                <div className={activeApp === 'settings' ? 'absolute inset-0 z-0 bg-[#050505]' : 'hidden'}>
+                    <SettingsApp userId={userId || ''} />
+                </div>
             </div>
 
             {/* Ghost Dock (Navegação Escondida) */}
@@ -123,7 +128,7 @@ export default function DesktopShell() {
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'identity' ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-white/5'}`}
                     >
                         <UserCircle2 className="w-6 h-6" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Identity</span>
+                        <span className="text-[10px] font-bold tracking-widest uppercase">Identidade</span>
                     </button>
 
                     <button
@@ -131,7 +136,7 @@ export default function DesktopShell() {
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'vault' ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-white/5'}`}
                     >
                         <DatabaseZap className="w-6 h-6" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Vault</span>
+                        <span className="text-[10px] font-bold tracking-widest uppercase">Cofre</span>
                     </button>
 
                     <button
@@ -157,11 +162,19 @@ export default function DesktopShell() {
                     <div className="w-[1px] h-full bg-slate-800 mx-2"></div>
 
                     <button
+                        onClick={() => setActiveApp('settings')}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'settings' ? 'text-zinc-300 bg-white/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Settings2 className="w-6 h-6" />
+                        <span className="text-[10px] font-bold tracking-widest uppercase">Config</span>
+                    </button>
+
+                    <button
                         onClick={handleLogout}
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all text-slate-500 hover:text-red-500 hover:bg-red-500/10`}
+                        className="flex flex-col items-center gap-1 p-2 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors ml-4"
                     >
                         <Power className="w-6 h-6" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Logout</span>
+                        <span className="text-[10px] font-bold tracking-widest uppercase">Sair</span>
                     </button>
 
                 </div>

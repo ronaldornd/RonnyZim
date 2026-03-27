@@ -12,9 +12,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
 
     useEffect(() => {
-        // Verifica hash da transição do Supabase
-        if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
-            setIsRecovering(true);
+        // Verifica transição do Supabase (hash ou query string)
+        if (typeof window !== 'undefined') {
+            const hasRecoveryHash = window.location.hash.includes('type=recovery');
+            const hasRecoveryQuery = new URLSearchParams(window.location.search).get('type') === 'recovery';
+            if (hasRecoveryHash || hasRecoveryQuery) {
+                setIsRecovering(true);
+            }
         }
 
         // Busca a sessão inicial caso o user de F5
@@ -51,7 +55,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             <UpdatePasswordScreen
                 onComplete={() => {
                     setIsRecovering(false);
-                    if (typeof window !== 'undefined' && window.location.hash) {
+                    if (typeof window !== 'undefined' && (window.location.hash || window.location.search)) {
                         window.history.replaceState(null, '', window.location.pathname);
                     }
                 }}

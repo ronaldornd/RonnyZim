@@ -1,11 +1,12 @@
 {
   "dependencies": {
-    "@google/genai": "^1.43.0",
+    "@google/genai": "^1.46.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^25.3.1",
     "@types/pdf-parse": "^1.1.5",
+    "@xyflow/react": "^12.10.1",
     "autoprefixer": "^10.4.27",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.3",

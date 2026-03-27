@@ -44,12 +44,12 @@ export default function AnalysisCard({ data }: AnalysisCardProps) {
                         <FileSearch className="w-5 h-5 text-green-400" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-green-400 uppercase tracking-widest leading-none">Intelligence Report</h3>
-                        <p className="text-[10px] text-green-500/60 font-mono mt-1">NATIVE GEMINI ENGINE // AUTOMATED ANALYSIS</p>
+                        <h3 className="text-sm font-bold text-green-400 uppercase tracking-widest leading-none">Relatório de Inteligência</h3>
+                        <p className="text-[10px] text-green-500/60 font-mono mt-1">MOTOR GEMINI NATIVO // ANÁLISE AUTOMATIZADA</p>
                     </div>
                 </div>
 
-                {/* Visualizador de Score (Circular simplificado com stroke-dasharray para web padrão) */}
+                {/* Visualizador de Score */}
                 <div className="relative flex items-center justify-center">
                     <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 ${scoreBorder} ${scoreBg}`}>
                         <span className={`text-xl font-black ${scoreColor}`}>{data.score}</span>
@@ -62,7 +62,7 @@ export default function AnalysisCard({ data }: AnalysisCardProps) {
                 <div>
                     <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
                         <Activity className="w-4 h-4 text-slate-500" />
-                        Executive Summary
+                        Sumário Executivo
                     </h4>
                     <p className="text-sm text-slate-300 leading-relaxed bg-black/40 p-3 rounded-lg border border-white/5 font-mono">
                         {data.summary}
@@ -73,14 +73,14 @@ export default function AnalysisCard({ data }: AnalysisCardProps) {
                 <div>
                     <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
                         <Target className="w-4 h-4 text-slate-500" />
-                        Data Points
+                        Pontos de Dados
                     </h4>
                     <ul className="space-y-2">
                         {data.key_points.map((point, i) => {
                             const isWarning = point.startsWith('⚠') || point.toLowerCase().includes('falta') || point.toLowerCase().includes('ausência');
                             const Icon = isWarning ? AlertTriangle : CheckCircle2;
                             const colorClass = isWarning ? 'text-yellow-400' : 'text-green-400';
-                            const cleanPoint = point.replace(/^[✓⚠]\s*/, ''); // limpa os emoticons se a string já vier com eles
+                            const cleanPoint = point.replace(/^[✓⚠]\s*/, ''); 
 
                             return (
                                 <li key={i} className="flex items-start gap-3 bg-white/[0.02] p-2 rounded-md border border-white/5">
@@ -92,14 +92,14 @@ export default function AnalysisCard({ data }: AnalysisCardProps) {
                     </ul>
                 </div>
 
-                {/* Action Plan */}
+                {/* Plano de Ação */}
                 <div
                     className="bg-green-500/5 rounded-lg border border-green-500/20 p-4"
                     role="region"
-                    aria-label="Action Plan"
+                    aria-label="Plano de Ação"
                 >
                     <h4 className="text-xs font-bold uppercase tracking-widest text-green-400 mb-2 flex items-center gap-2">
-                        <span>⚡</span> Next Strategic Action
+                        <span>⚡</span> Próxima Ação Estratégica
                     </h4>
                     <p className="text-sm text-green-100/90 leading-relaxed">
                         {data.action_plan}

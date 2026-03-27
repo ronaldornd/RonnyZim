@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/browser';
 import QuestDetailModal from './QuestDetailModal';
+import NeuralGraph from './NeuralGraph';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import {
     Activity,
@@ -12,17 +13,19 @@ import {
     Cpu,
     Crosshair,
     Shield,
-    TrendingUp,
     UserCircle2,
-    Zap,
     Code,
     Database,
     Palette,
     Pencil,
     Check,
-    X as XIcon
+    X as XIcon,
+    Network,
+    LayoutList
 } from 'lucide-react';
 import { ColorMap } from '../genesis/StackSelector';
+import BiorhythmWidget from '../daily/BiorhythmWidget';
+import QuestGrid from './QuestGrid';
 
 interface UserStack {
     id: string;
@@ -50,38 +53,20 @@ interface DailyQuest {
     completed: boolean; // para controle de otimismo no front
 }
 
-const getStackIcon = (stackName: string) => {
-    switch (stackName.toLowerCase()) {
-        case 'react':
-        case 'next.js':
-        case 'typescript':
-        case 'javascript':
-            return <Code className="w-4 h-4 text-blue-400" />;
-        case 'node.js':
-        case 'python':
-        case 'supabase':
-        case 'postgresql':
-            return <Database className="w-4 h-4 text-green-400" />;
-        case 'tailwind':
-        case 'figma':
-            return <Palette className="w-4 h-4 text-teal-400" />;
-        default:
-            return <Activity className="w-4 h-4 text-amber-400" />;
-    }
-};
+
 
 export default function IdentityMatrix({ userId, isActive = true }: IdentityMatrixProps) {
     const [stacks, setStacks] = useState<UserStack[]>([]);
     const [loading, setLoading] = useState(true);
     const [quests, setQuests] = useState<DailyQuest[]>([]);
-    const [xpToasts, setXpToasts] = useState<{ id: number, message: string }[]>([]);
-    const [expandedQuestId, setExpandedQuestId] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'list' | 'neural'>('list');
     const [selectedQuest, setSelectedQuest] = useState<DailyQuest | null>(null);
+    const [xpToasts, setXpToasts] = useState<{ id: number; message: string }[]>([]);
 
-    // Editable Profile
+    // Profile Editável
     const [editMode, setEditMode] = useState(false);
     const [displayName, setDisplayName] = useState('Operador');
-    const [profileTitle, setProfileTitle] = useState('Full Stack Architect');
+    const [profileTitle, setProfileTitle] = useState('Arquiteto Full Stack');
     const [birthDate, setBirthDate] = useState('');
     const [birthTime, setBirthTime] = useState('');
     const [birthCity, setBirthCity] = useState('');
@@ -117,22 +102,43 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
             setStacks(data as UserStack[]);
         }
 
-        // Buscar Profile Facts (name, title, birth_date, birth_time, birth_city)
+        // Buscar Profile Facts (name, title, birth_date, birth_time, birth_city, birth_data)
         const { data: facts } = await supabase
             .from('user_facts')
-            .select('property_key, fact_value')
+            .select('property_key, value')
             .eq('user_id', userId)
-            .in('property_key', ['display_name', 'full_name', 'profile_title', 'birth_date', 'birth_time', 'birth_city']);
+            .in('property_key', ['display_name', 'full_name', 'profile_title', 'birth_date', 'birth_time', 'birth_city', 'birth_data']);
 
         if (facts) {
             const fMap: Record<string, string> = {};
-            facts.forEach((f: any) => { fMap[f.property_key] = f.fact_value; });
-            // display_name takes priority, fall back to full_name from Genesis
+            facts.forEach((f: any) => { fMap[f.property_key] = f.value; });
+            
+            // display_name tem prioridade, fallback para full_name do Genesis
             setDisplayName(fMap.display_name || fMap.full_name || 'Operador');
             if (fMap.profile_title) setProfileTitle(fMap.profile_title);
-            if (fMap.birth_date) setBirthDate(fMap.birth_date);
-            if (fMap.birth_time) setBirthTime(fMap.birth_time);
-            if (fMap.birth_city) setBirthCity(fMap.birth_city);
+            
+            // Dados Natais com Fallback para birth_data (Legado)
+            let bd = fMap.birth_date;
+            let bt = fMap.birth_time;
+            let bc = fMap.birth_city;
+
+            if (!bd && fMap.birth_data) {
+                // Tenta extrair do formato: "Nascido em DD/MM/YYYY as HH:mm na cidade de CIDADE"
+                const dateMatch = fMap.birth_data.match(/(\d{2}\/\d{2}\/\d{4})/);
+                const timeMatch = fMap.birth_data.match(/as (\d{2}:\d{2})/);
+                const cityMatch = fMap.birth_data.match(/na cidade de (.+)/);
+                
+                if (dateMatch) {
+                    const [d, m, y] = dateMatch[1].split('/');
+                    bd = `${y}-${m}-${d}`; // Converte para YYYY-MM-DD
+                }
+                if (timeMatch) bt = timeMatch[1];
+                if (cityMatch) bc = cityMatch[1];
+            }
+
+            if (bd) setBirthDate(bd);
+            if (bt) setBirthTime(bt);
+            if (bc) setBirthCity(bc);
         }
 
         // Buscar Quests usando a API nova para evitar expor chaves extras
@@ -167,18 +173,29 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
     const saveProfile = async () => {
         const supabase = createClient();
         const updates = [
-            { property_key: 'display_name', fact_value: editName },
-            { property_key: 'profile_title', fact_value: editTitle },
-            { property_key: 'birth_date', fact_value: editBirth },
-            { property_key: 'birth_time', fact_value: editTime },
-            { property_key: 'birth_city', fact_value: editCity },
+            { user_id: userId, category: 'core_identity', property_key: 'display_name', value: editName },
+            { user_id: userId, category: 'core_identity', property_key: 'profile_title', value: editTitle },
+            { user_id: userId, category: 'astrology', property_key: 'birth_date', value: editBirth },
+            { user_id: userId, category: 'astrology', property_key: 'birth_time', value: editTime },
+            { user_id: userId, category: 'astrology', property_key: 'birth_city', value: editCity },
+            // Atualizar o human-readable birth_data para compatibilidade reversa
+            { 
+                user_id: userId, 
+                category: 'astrology', 
+                property_key: 'birth_data', 
+                value: `Nascido em ${editBirth.split('-').reverse().join('/')} as ${editTime} na cidade de ${editCity}` 
+            },
         ];
-        for (const u of updates) {
-            await supabase.from('user_facts').upsert(
-                { user_id: userId, agent_id: 'system', ...u },
-                { onConflict: 'user_id,property_key' }
-            );
+
+        const { error: upsertError } = await supabase
+            .from('user_facts')
+            .upsert(updates, { onConflict: 'user_id,property_key' });
+
+        if (upsertError) {
+            console.error('❌ Falha ao salvar perfil:', upsertError);
+            return;
         }
+
         setDisplayName(editName);
         setProfileTitle(editTitle);
         setBirthDate(editBirth);
@@ -189,14 +206,14 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
     };
 
     const handleCompleteQuest = async (questId: string, xpReward: number, stackName: string) => {
-        // Optimistic UI update
+        // Update otimista da UI
         setQuests(prev => prev.map(q => q.id === questId ? { ...q, completed: true } : q));
 
-        // Show XP Toast
+        // Mostrar Toast de XP
         const toastId = Date.now();
         setXpToasts(prev => [...prev, { id: toastId, message: `+${xpReward} XP em ${stackName}` }]);
 
-        // Remove toast after 2s
+        // Remover toast após 2s
         setTimeout(() => {
             setXpToasts(prev => prev.filter(t => t.id !== toastId));
         }, 2000);
@@ -211,24 +228,22 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
             // Re-fetch radar/skills silenciosamente para animar o ganho de progresso visualmente
             await fetchIdentityStats();
         } catch (e) {
-            console.error('Falha na gamification API', e);
-            // Revert optimistic if error? (Para escopo simples, apenas logamos)
+            console.error('Falha na api de gamificação', e);
         }
     };
 
-    // Preparar dados do radar chart 
-    // Usaremos as próprias stacks listadas 
+    // Preparar dados do gráfico de radar
     const radarData = stacks.map(s => ({
         subject: s.global_stacks.name,
-        A: (s.current_level * 10) + (s.current_xp / 10), // formula fictícia de progressão visual
+        A: (s.current_level * 10) + (s.current_xp / 10), 
         fullMark: 100,
     }));
 
     if (loading) {
         return (
-            <div className="w-full h-full flex items-center justify-center font-mono text-green-500/50">
-                <Shield className="w-8 h-8 animate-pulse mb-2 opacity-50 block mx-auto" />
-                Carregando Identidade...
+            <div className="w-full h-full flex flex-col items-center justify-center font-mono text-green-500/50 gap-4">
+                <Shield className="w-12 h-12 animate-pulse opacity-50" />
+                <span className="tracking-widest uppercase text-[10px]">Iniciando Protocolo de Identidade...</span>
             </div>
         );
     }
@@ -236,12 +251,12 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
     return (
         <div className="h-full w-full bg-[#050505] p-6 text-slate-200 overflow-y-auto custom-scrollbar relative">
 
-            {/* Ambient Background */}
+            {/* Fundo Ambientes */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-green-500/10 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="max-w-6xl mx-auto space-y-6">
 
-                {/* 1. HEADER (Identity / Class) — Editable */}
+                {/* 1. CABEÇALHO (Identidade / Classe) — Editável */}
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-6 border border-white/5 bg-white/[0.02] p-6 rounded-2xl backdrop-blur-md relative overflow-hidden">
                     <div className="absolute top-0 right-0 opacity-10 p-6 pointer-events-none">
                         <UserCircle2 className="w-32 h-32 text-green-500" />
@@ -254,7 +269,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                             </div>
                         </div>
                         <div className="absolute -bottom-2 -right-2 bg-green-500 text-black text-[10px] font-bold px-2 py-1 rounded-md border border-black shadow-lg">
-                            LVL {stacks.reduce((a, s) => a + s.current_level, 0) || '—'}
+                            NVL {stacks.reduce((a, s) => a + s.current_level, 0) || '—'}
                         </div>
                     </div>
 
@@ -319,7 +334,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                         {displayName}
                                         <CheckCircle2 className="w-5 h-5 text-blue-400" />
                                     </h1>
-                                    <button onClick={enterEditMode} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-all">
+                                    <button onClick={enterEditMode} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-all" title="Editar Perfil">
                                         <Pencil className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -348,64 +363,105 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                 </div>
 
 
-                {/* 2. MAIN GRID */}
+                {/* 2. GRID PRINCIPAL */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    {/* SKILL GRID (Current Mastery) */}
+                    {/* GRID DE HABILIDADES (Maestria Atual) */}
                     <div className="lg:col-span-2 space-y-4">
-                        <h2 className="text-sm font-bold tracking-widest text-slate-400 uppercase flex items-center gap-2">
-                            <Cpu className="w-4 h-4 text-green-400" />
-                            Matriz de Habilidades
-                        </h2>
-
-                        {stacks.length === 0 ? (
-                            <div className="p-8 border border-dashed border-white/10 rounded-2xl text-center text-slate-500">
-                                Nenhum DNA técnico registrado na calibração.
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-bold tracking-widest text-slate-400 uppercase flex items-center gap-2">
+                                <Cpu className="w-4 h-4 text-green-400" />
+                                Matriz de Habilidades
+                            </h2>
+                            {/* Toggle List / Neural */}
+                            <div className="flex items-center gap-1 p-1 bg-black/40 border border-white/5 rounded-xl">
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 ${
+                                        viewMode === 'list'
+                                            ? 'bg-white/10 text-green-400 shadow-inner'
+                                            : 'text-slate-500 hover:text-slate-300'
+                                    }`}
+                                >
+                                    <LayoutList className="w-3.5 h-3.5" />
+                                    Lista
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('neural')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 ${
+                                        viewMode === 'neural'
+                                            ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                            : 'text-slate-500 hover:text-slate-300'
+                                    }`}
+                                >
+                                    <Network className="w-3.5 h-3.5" />
+                                    Neural
+                                </button>
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {stacks.map((stack) => {
-                                    const brandColor = ColorMap[stack.global_stacks.icon_slug.toLowerCase()] || ColorMap['default'];
-                                    const nextLevelXp = stack.current_level * 100;
-                                    const progressPercent = Math.min(100, (stack.current_xp / nextLevelXp) * 100);
+                        </div>
 
-                                    return (
-                                        <div
-                                            key={stack.id}
-                                            className="p-4 rounded-xl border border-white/5 bg-[#0a0a0a] hover:border-white/10 transition-colors"
-                                        >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div
-                                                        className="w-2 h-2 rounded-full"
-                                                        style={{ backgroundColor: brandColor, boxShadow: `0 0 10px ${brandColor}` }}
-                                                    />
-                                                    <span className="font-bold text-sm tracking-wide">{stack.global_stacks.name}</span>
+                        {/* LIST VIEW */}
+                        {viewMode === 'list' && (
+                            stacks.length === 0 ? (
+                                <div className="p-8 border border-dashed border-white/10 rounded-2xl text-center text-slate-500">
+                                    Nenhum DNA técnico registrado na calibração.
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {stacks.map((stack) => {
+                                        const brandColor = ColorMap[stack.global_stacks.icon_slug.toLowerCase()] || ColorMap['default'];
+                                        const nextLevelXp = stack.current_level * 100;
+                                        const progressPercent = Math.min(100, (stack.current_xp / nextLevelXp) * 100);
+
+                                        return (
+                                            <div
+                                                key={stack.id}
+                                                className="p-4 rounded-xl border border-white/5 bg-[#0a0a0a] hover:border-white/10 transition-colors"
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="w-2 h-2 rounded-full"
+                                                            style={{ backgroundColor: brandColor, boxShadow: `0 0 10px ${brandColor}` }}
+                                                        />
+                                                        <span className="font-bold text-sm tracking-wide">{stack.global_stacks.name}</span>
+                                                    </div>
+                                                    <span className="text-xs font-mono text-slate-400">Nv. {stack.current_level}</span>
                                                 </div>
-                                                <span className="text-xs font-mono text-slate-400">Nv. {stack.current_level}</span>
-                                            </div>
 
-                                            <div className="relative w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-3">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${progressPercent}%` }}
-                                                    transition={{ duration: 1, delay: 0.2 }}
-                                                    className="absolute top-0 left-0 h-full rounded-full"
-                                                    style={{ backgroundColor: brandColor }}
-                                                />
+                                                <div className="relative w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-3">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${progressPercent}%` }}
+                                                        transition={{ duration: 1, delay: 0.2 }}
+                                                        className="absolute top-0 left-0 h-full rounded-full"
+                                                        style={{ backgroundColor: brandColor }}
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between mt-2">
+                                                    <span className="text-[10px] text-slate-500 font-mono">XP: {stack.current_xp}</span>
+                                                    <span className="text-[10px] text-slate-500 font-mono">PRÓX: {nextLevelXp}</span>
+                                                </div>
                                             </div>
-                                            <div className="flex justify-between mt-2">
-                                                <span className="text-[10px] text-slate-500 font-mono">XP: {stack.current_xp}</span>
-                                                <span className="text-[10px] text-slate-500 font-mono">NEXT: {nextLevelXp}</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )
+                        )}
+
+                        {/* NEURAL VIEW */}
+                        {viewMode === 'neural' && (
+                            <NeuralGraph
+                                stacks={stacks as any}
+                                quests={quests as any}
+                                userName={displayName}
+                                totalLevel={stacks.reduce((a, s) => a + s.current_level, 0)}
+                                userId={userId}
+                            />
                         )}
                     </div>
 
-                    {/* RADAR CHART (Aura / Profile Shape) */}
+                    {/* GRÁFICO DE RADAR (Aura / Formato do Perfil) */}
                     <div className="col-span-1 space-y-4">
                         <h2 className="text-sm font-bold tracking-widest text-slate-400 uppercase flex items-center gap-2">
                             <Crosshair className="w-4 h-4 text-teal-400" />
@@ -417,7 +473,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                     <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                                         <PolarGrid stroke="#333" />
                                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 10, fontFamily: 'monospace' }} />
-                                        <Radar name="Skills" dataKey="A" stroke="#22c55e" fill="#22c55e" fillOpacity={0.2} />
+                                        <Radar name="Habilidades" dataKey="A" stroke="#22c55e" fill="#22c55e" fillOpacity={0.2} />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '8px' }}
                                             itemStyle={{ color: '#22c55e', fontSize: '12px' }}
@@ -434,106 +490,46 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                     </div>
                 </div>
 
-                {/* 3. DAILY QUESTS LOG (Optimistic UI) */}
-                <div className="mt-8">
-                    <h2 className="text-sm font-bold tracking-widest text-slate-400 uppercase flex items-center gap-2 mb-4">
-                        <Zap className="w-4 h-4 text-amber-400" />
-                        Missões Diárias
-                    </h2>
+                {/* 3. LOG DE MISSÕES DIÁRIAS (Biorritmo Integrado) */}
+                <div className="mt-8 space-y-6">
+                    <BiorhythmWidget userId={userId} />
 
-                    <div className="space-y-3">
-                        <AnimatePresence>
-                            {quests.map((quest) => (
-                                <motion.div
-                                    key={quest.id}
-                                    layout
-                                    onClick={() => setExpandedQuestId(expandedQuestId === quest.id ? null : quest.id)}
-                                    initial={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9, backgroundColor: 'rgba(34, 197, 94, 0.2)' }}
-                                    transition={{ duration: 0.3 }}
-                                    className={`flex flex-col p-4 rounded-xl border transition-all duration-300 cursor-pointer ${quest.completed
-                                    ? 'border-green-500/20 bg-green-500/5 opacity-50'
-                                    : 'border-white/5 bg-[#0a0a0a] hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.1)]'
-                                    }`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex flex-col">
-                                        <span className={`text-sm flex items-center gap-2 ${quest.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
-                                            {getStackIcon(quest.target_stack)}
-                                            {quest.title}
-                                        </span>
-                                        <span className="text-xs font-mono text-amber-500 mt-1 flex items-center gap-1 opacity-80">
-                                            <TrendingUp className="w-3 h-3" />
-                                            {quest.xp_reward} XP
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {quest.description && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setSelectedQuest(quest); }}
-                                                className="px-3 py-2 rounded-lg text-xs font-semibold border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all"
-                                            >
-                                                Detalhes
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleCompleteQuest(quest.id, quest.xp_reward, quest.target_stack);
-                                            }}
-                                            disabled={quest.completed}
-                                            className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest uppercase transition-all ${quest.completed
-                                                ? 'bg-transparent text-green-500'
-                                                : 'bg-white/5 text-white hover:bg-white/10 hover:text-green-400'
-                                                }`}
-                                        >
-                                            {quest.completed ? 'Completado' : 'Concluir'}
-                                        </button>
-                                    </div>
-                                  </div>
-
-                                  {/* EXPANDED DESCRIPTION */}
-                                  <AnimatePresence>
-                                      {expandedQuestId === quest.id && (
-                                          <motion.div
-                                              initial={{ opacity: 0, height: 0 }}
-                                              animate={{ opacity: 1, height: 'auto' }}
-                                              exit={{ opacity: 0, height: 0 }}
-                                              className="mt-4 pt-4 border-t border-white/10 text-slate-400 text-sm whitespace-pre-wrap leading-relaxed overflow-hidden"
-                                          >
-                                              {quest.description || "Nenhum detalhe adicional fornecido pela IA."}
-                                          </motion.div>
-                                      )}
-                                  </AnimatePresence>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                    <div className="pt-2">
+                        <QuestGrid 
+                            userId={userId}
+                            quests={quests}
+                            onCompleteQuest={handleCompleteQuest}
+                            onSelectQuest={setSelectedQuest}
+                        />
                     </div>
                 </div>
 
             </div>
 
-            {/* QUEST DETAIL MODAL */}
+            {/* MODAL DE DETALHES DA QUEST */}
             <QuestDetailModal
+                userId={userId}
                 quest={selectedQuest}
                 onClose={() => setSelectedQuest(null)}
                 onComplete={handleCompleteQuest}
             />
 
-            {/* XP FLOAT TOASTS */}
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50">
-                {xpToasts.map((toast) => (
-                    <motion.div
-                        key={toast.id}
-                        initial={{ opacity: 0, scale: 0.5, y: 0 }}
-                        animate={{ opacity: 1, scale: 1.5, y: -100 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                        className="text-amber-400 font-black text-4xl drop-shadow-[0_0_15px_rgba(251,191,36,0.5)] absolute"
-                    >
-                        {toast.message}
-                    </motion.div>
-                ))}
+            {/* FLOATING XP TOASTS */}
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[100]">
+                <AnimatePresence>
+                    {xpToasts.map((toast) => (
+                        <motion.div
+                            key={toast.id}
+                            initial={{ opacity: 0, scale: 0.5, y: 0 }}
+                            animate={{ opacity: 1, scale: 1.5, y: -100 }}
+                            exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            className="text-amber-400 font-black text-4xl drop-shadow-[0_0_15px_rgba(251,191,36,0.5)] absolute whitespace-nowrap"
+                        >
+                            {toast.message}
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
             </div>
 
         </div>

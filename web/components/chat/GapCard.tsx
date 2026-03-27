@@ -25,7 +25,7 @@ export default function GapCard({ gapData, onSubmit }: GapCardProps) {
             await onSubmit(inputValue);
             setIsSaved(true);
         } catch (error) {
-            console.error('Failed to submit gap fact', error);
+            console.error('Falha ao enviar fato de lacuna', error);
             setIsSubmitting(false);
         }
     };
@@ -45,9 +45,9 @@ export default function GapCard({ gapData, onSubmit }: GapCardProps) {
                 {/* Header Badge */}
                 <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-green-400 uppercase">
                     <Sparkles className="w-4 h-4" />
-                    <span>Active Learning Middleware: {gapData.category}</span>
+                    <span>Middleware de Aprendizado Ativo: {gapData.category}</span>
                     {gapData.importance === 'high' && (
-                        <span className="ml-2 px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full text-[10px]">High Priority</span>
+                        <span className="ml-2 px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full text-[10px]">Alta Prioridade</span>
                     )}
                 </div>
 
@@ -81,11 +81,11 @@ export default function GapCard({ gapData, onSubmit }: GapCardProps) {
                                 className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/50 text-green-400 px-6 py-3 rounded-xl transition-all font-bold tracking-wider uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                             >
                                 {isSubmitting ? (
-                                    <span className="animate-pulse">Saving...</span>
+                                    <span className="animate-pulse">Salvando...</span>
                                 ) : (
                                     <>
                                         <Save className="w-4 h-4" />
-                                        Save to Memory
+                                        Salvar na Memória
                                     </>
                                 )}
                             </button>

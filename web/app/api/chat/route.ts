@@ -43,7 +43,87 @@ export async function POST(request: Request) {
         let targetAgentId = agent_id;
         let systemInstruction = dynamic_system_prompt;
 
-        // 2. The Semantic Router Step (only run if not explicitly overridden by dynamic prompt logic elsewhere)
+        // 2. Fetch User Context (Facts + AI Model Preference) early
+        let chatModel = 'gemini-2.0-flash'; // Default globals
+        let userContextStr = '';
+        try {
+            const [factsRes, masteryRes, questsRes, hunterRes, lastInterviewRes] = await Promise.all([
+                supabase.from('user_facts').select('category, property_key, value').eq('user_id', user_id),
+                supabase.from('user_stack_mastery').select('current_level, current_xp, global_stacks(name)').eq('user_id', user_id),
+                supabase.from('daily_quests').select('title, xp_reward, status').eq('user_id', user_id).eq('status', 'Active'),
+                supabase.from('hunter_insights').select('document_name, match_score, status').eq('user_id', user_id).in('status', ['Evaluating', 'Applied', 'Interview']),
+                supabase.from('interview_sessions').select('behavioral_analysis, created_at').eq('user_id', user_id).not('behavioral_analysis', 'is', null).order('created_at', { ascending: false }).limit(1)
+            ]);
+
+            const facts = factsRes.data || [];
+            
+            const modelFact = facts.find(f => f.property_key === 'preferred_ai_model');
+            if (modelFact && modelFact.value) {
+                chatModel = modelFact.value;
+                console.log(`📡 [Chat API] Usando modelo preferido: ${chatModel}`);
+            }
+
+            if (facts.length > 0) {
+                userContextStr += "\n\n### FATOS CONHECIDOS SOBRE O USUÁRIO:\n";
+                facts.forEach(f => {
+                    const factVal = f.value || '';
+                    userContextStr += `- [${f.category || 'Geral'}] ${f.property_key}: ${factVal}\n`;
+                });
+
+                // Energy Feedback Loop
+                const energyFact = facts.find(f => f.property_key === 'astro_daily_energy');
+                if (energyFact) {
+                    const energy = parseInt(energyFact.value || '50');
+                    userContextStr += `\n\n### ESTADO ATUAL (ASTRODASH ENERGY): ${energy}%\n`;
+                    if (energy > 80) {
+                        userContextStr += "- O usuário está em um PICO de energia. Sugira quests de ALTO IMPACTO e GRIND intenso.\n";
+                    } else if (energy < 40) {
+                        userContextStr += "- O usuário está em BAIXA energia. Sugira quests LEVES, de manutenção ou organização básica.\n";
+                    }
+                }
+            }
+
+            const mastery = masteryRes.data || [];
+            if (mastery.length > 0) {
+                userContextStr += "\n\n### STACK TECNOLÓGICA E NÍVEL DE XP DO USUÁRIO:\n";
+                mastery.forEach((m: any) => {
+                    const stackName = m.global_stacks?.name || 'Skill Desconhecida';
+                    userContextStr += `- ${stackName}: Nível ${m.current_level} (${m.current_xp} XP na barra atual)\n`;
+                });
+            }
+
+            const quests = questsRes.data || [];
+            if (quests.length > 0) {
+                userContextStr += "\n\n### MISSÕES ATIVAS DO USUÁRIO:\n";
+                quests.forEach((q: any) => {
+                    userContextStr += `- Missão Pendente: ${q.title} (Recompensa: ${q.xp_reward} XP)\n`;
+                });
+            }
+
+            const hunters = hunterRes.data || [];
+            if (hunters.length > 0) {
+                userContextStr += "\n\n### VAGAS/ALVOS EM ANDAMENTO NO HUNTER BOARD:\n";
+                hunters.forEach((h: any) => {
+                    userContextStr += `- Vaga: ${h.document_name} | Status: ${h.status} | Match Score: ${h.match_score}%\n`;
+                });
+            }
+
+            const lastInterview = lastInterviewRes.data?.[0];
+            if (lastInterview && lastInterview.behavioral_analysis) {
+                userContextStr += "\n\n### ÚLTIMA ANÁLISE COMPORTAMENTAL (SENSORIAL/AUDITIVA):\n";
+                const analysis = lastInterview.behavioral_analysis as any;
+                userContextStr += `Identificada em: ${new Date(lastInterview.created_at).toLocaleDateString()}\n`;
+                userContextStr += `- Score de Confiança: ${analysis.overall_confidence || 'N/A'}/10\n`;
+                userContextStr += `- Pontos Fortes: ${analysis.strengths?.join(', ') || 'Processando'}\n`;
+                userContextStr += `- Pontos de Atenção (Red Flags): ${analysis.red_flags?.join(', ') || 'Nenhum'}\n`;
+                userContextStr += `- Feedback Técnico: ${analysis.tone_analysis || 'N/A'}\n`;
+                userContextStr += "\nUSE ESTE CONTEXTO para dar dicas de como o usuário pode melhorar a fala, reduzir hesitações ou ser mais assertivo em entrevistas. Não mencione o JSON, aja como se estivesse ouvindo a gravação.\n";
+            }
+        } catch (ctxErr) {
+            console.error('Falha ao buscar user context:', ctxErr);
+        }
+
+        // 3. The Semantic Router Step
         if (!dynamic_system_prompt && agents && agents.length > 0) {
             const routingPrompt = `
 You are the Semantic Router for the RonnyZim OS. 
@@ -61,7 +141,7 @@ User's Latest Message: "${lastMessage}"
 `;
             try {
                 const routeResponse = await ai.models.generateContent({
-                    model: 'gemini-3-flash-preview',
+                    model: chatModel,
                     contents: routingPrompt,
                     config: {
                         responseMimeType: "application/json",
@@ -82,7 +162,7 @@ User's Latest Message: "${lastMessage}"
             }
         }
 
-        // 3. Fetch Persona Context from Supabase
+        // 4. Fetch Persona Context from Supabase
         if (!dynamic_system_prompt) {
             const { data: activeAgent } = await supabase
                 .from('internal_agents')
@@ -97,40 +177,15 @@ User's Latest Message: "${lastMessage}"
             }
         }
 
-        // 3.1 Fetch User Context (Facts + Stack)
-        let userContextStr = '';
-        try {
-            const [factsRes, masteryRes] = await Promise.all([
-                supabase.from('user_facts').select('category, property_key, value').eq('user_id', user_id),
-                supabase.from('user_stack_mastery').select('current_level, current_xp, global_stacks(name)').eq('user_id', user_id)
-            ]);
-
-            const facts = factsRes.data || [];
-            if (facts.length > 0) {
-                userContextStr += "\n\n### FATOS CONHECIDOS SOBRE O USUÁRIO:\n";
-                facts.forEach(f => {
-                    userContextStr += `- [${f.category || 'Geral'}] ${f.property_key}: ${f.value}\n`;
-                });
-            }
-
-            const mastery = masteryRes.data || [];
-            if (mastery.length > 0) {
-                userContextStr += "\n\n### STACK TECNOLÓGICA E NÍVEL DE XP DO USUÁRIO:\n";
-                mastery.forEach((m: any) => {
-                    const stackName = m.global_stacks?.name || 'Skill Desconhecida';
-                    userContextStr += `- ${stackName}: Nível ${m.current_level} (${m.current_xp} XP na barra atual)\n`;
-                });
-            }
-        } catch (ctxErr) {
-            console.error('Falha ao buscar user context:', ctxErr);
-        }
-
-        // 3.5. Universal System Constraint
+        // 5. Universal System Constraint
         if (typeof systemInstruction === 'string') {
             systemInstruction += userContextStr;
             systemInstruction += "\n\nCRITICAL SYSTEM RULE: Em absolutamente toda e qualquer interação sua, independente do seu tom, você DEVE terminar a sua resposta sugerindo ao usuário exatamente 3 ideias concisas de próximos passos práticos ou dúvidas acionáveis ('Next Steps'). Formate como uma lista enumerada curta no final.";
-            systemInstruction += "\n\nCRITICAL SYSTEM RULE: If you need specific personal/professional facts about the user to give a highly accurate answer, DO NOT guess or give generic advice. Call the declare_knowledge_gap tool instead.";
-            systemInstruction += "\n\nCRITICAL SYSTEM RULE: If the user asks for a study plan, a challenge, or a quest, DO NOT just list it in text. Call the create_daily_quest tool to formally assign statistical XP progression to their Matrix. IMPORTANT: The 'description' field MUST contain a clear execution guide with at least 4 numbered steps (e.g., '1. Abra o projeto... 2. Crie o arquivo... 3. Implemente a lógica... 4. Teste com...') so the user knows exactly how to complete the quest.";
+            systemInstruction += "\n\nCRITICAL SYSTEM RULE: If you need specific personal/professional facts about the user to give a highly accurate answer, DO NOT guess or give generic advice. Call the declare_knowledge_gap tool instead. NEVER output raw JSON in the text message if you should be calling this tool.";
+            systemInstruction += "\n\nCRITICAL SYSTEM RULE: If the user asks for a study plan, a challenge, or a quest, DO NOT just list it in text. Call the create_daily_quest tool to formally assign statistical XP progression to their Matrix. Considere o estado de energia do usuário (ASTRODASH ENERGY) para calibrar a dificuldade e recompensas.";
+            systemInstruction += "\n\nCRITICAL SYSTEM RULE: Always respond using Markdown formatting (bold, italics, lists, headers) to make your output clear and professional. NEVER respond with raw JSON objects in the final message content.";
+            systemInstruction += "\n\nCRITICAL SYSTEM RULE: The 'description' field of create_daily_quest MUST contain a clear execution guide with at least 4 numbered steps so the user knows exactly how to complete the quest.";
+            systemInstruction += "\n\nCRITICAL SYSTEM RULE [CONTEXT AWARE]: Se o usuário possui missões ativas listadas acima, encoraje-o a completá-las antes de sugerir novas missões. NÃO crie missões ou desafios aleatoriamente se o usuário apenas disser 'olá' ou mensagens curtas. Nesse caso, faça um breve resumo motivacional do estado atual (missões ativas, vagas em andamento, energia) e direcione o foco dele SEM chamar a tool create_daily_quest.";
         }
 
         // Processamento do history para a chamada principal
@@ -142,9 +197,9 @@ User's Latest Message: "${lastMessage}"
             };
         });
 
-        // 4. Main Agent Generation
+        // 6. Main Agent Generation
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: chatModel,
             contents: geminiHistory,
             config: {
                 systemInstruction: systemInstruction,
@@ -154,7 +209,7 @@ User's Latest Message: "${lastMessage}"
             }
         });
 
-        // 5. Active Learning Check & Return
+        // 7. Active Learning Check & Return
         if (response.functionCalls && response.functionCalls.length > 0) {
             const call = response.functionCalls[0];
             if (call.name === 'declare_knowledge_gap') {
@@ -170,7 +225,6 @@ User's Latest Message: "${lastMessage}"
                 const adminClient = createAdminClient();
                 const qArgs = call.args as any;
                 
-                // Fire and forget or await the insert, we'll await to ensure it's saved before returning
                 const { data: insertedQuest, error } = await adminClient.from('daily_quests').insert({
                     user_id: user_id,
                     title: qArgs.title,

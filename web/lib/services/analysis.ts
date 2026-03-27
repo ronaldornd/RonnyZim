@@ -4,7 +4,8 @@ export interface AnalysisIntent {
     agentId: string;
     fileType?: string;
     userId: string;
-    timestamp: number;
+    userStacks?: string[];
+    intent?: 'vault_tagging' | 'clash_check';
 }
 
 const ANALYSIS_STORE_KEY = 'ronnyzim_pending_analysis';
@@ -13,19 +14,28 @@ const ANALYSIS_STORE_KEY = 'ronnyzim_pending_analysis';
  * Registra a intenção de análise de um arquivo por um Agente específico (Phase 1).
  * Salva temporariamente no LocalStorage para ser consumido pelo AgentWorkspace assim que montado.
  */
-export async function triggerAnalysis(fileUrl: string, fileName: string, agentId: string, userId: string, fileType?: string): Promise<void> {
+export async function triggerAnalysis(
+    fileUrl: string,
+    fileName: string,
+    agentId: string,
+    userId: string,
+    fileType?: string,
+    userStacks?: string[],
+    intent?: 'vault_tagging' | 'clash_check'
+): Promise<void> {
 
-    const intent: AnalysisIntent = {
+    const intentPayload: AnalysisIntent = {
         fileUrl,
         fileName,
         agentId,
-        fileType,
         userId,
-        timestamp: Date.now()
+        fileType,
+        userStacks,
+        intent
     };
 
     // Guarda localmente ANTES do delay/redirect
-    localStorage.setItem(ANALYSIS_STORE_KEY, JSON.stringify(intent));
+    localStorage.setItem(ANALYSIS_STORE_KEY, JSON.stringify(intentPayload));
 
     // Dispara alerta para componentes que não desmontam (CSS Hidden mode)
     if (typeof window !== 'undefined') {

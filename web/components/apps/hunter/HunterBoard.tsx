@@ -17,8 +17,12 @@ import {
     Zap,
     AlertTriangle,
     Trash2,
-    ExternalLink
+    ExternalLink,
+    Mic
 } from 'lucide-react';
+import InterviewSimulator from './InterviewSimulator';
+import TargetDossier from './TargetDossier';
+import MarketOracle from './MarketOracle';
 
 interface HunterInsight {
     id: string;
@@ -27,7 +31,12 @@ interface HunterInsight {
     score: number;
     summary: string;
     key_points: string[];
-    action_plan?: string;
+    action_plan?: string[];
+    gap_analysis?: {
+        match_percentage: number;
+        missing_skills: string[];
+        strong_matches: string[];
+    };
     status: 'Evaluating' | 'Applied' | 'Rejected';
     created_at: string;
 }
@@ -41,6 +50,15 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
     const [loading, setLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'Targets' | 'Profile'>('Targets');
+    const [userName, setUserName] = useState('Operador');
+
+
+    // [Phase 8] Selection State
+    const [selectedJob, setSelectedJob] = useState<HunterInsight | null>(null);
+
+    // [Phase 6] Interview States
+    const [isInterviewOpen, setIsInterviewOpen] = useState(false);
+    const [selectedInterviewJob, setSelectedInterviewJob] = useState<HunterInsight | null>(null);
 
     const supabase = createClient();
 
@@ -61,8 +79,28 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
     };
 
     useEffect(() => {
-        if (userId) fetchInsights();
+        if (userId) {
+            fetchInsights();
+            fetchUserName();
+        }
     }, [userId]);
+
+    const fetchUserName = async () => {
+        const { data, error } = await supabase
+            .from('user_facts')
+            .select('property_key, value')
+            .eq('user_id', userId)
+            .in('property_key', ['display_name', 'full_name']);
+
+        if (!error && data && data.length > 0) {
+            const displayObj = data.find(d => d.property_key === 'display_name');
+            const fullObj = data.find(d => d.property_key === 'full_name');
+            const rawName = displayObj?.value || fullObj?.value || 'Operador';
+            
+            // Pega apenas o primeiro nome para uma conversa mais casual
+            setUserName(rawName.split(' ')[0]);
+        }
+    };
 
     const updateStatus = async (id: string, newStatus: HunterInsight['status']) => {
         setUpdatingId(id);
@@ -73,6 +111,11 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
 
         if (!error) {
             setInsights(prev => prev.map(insight => insight.id === id ? { ...insight, status: newStatus } : insight));
+            
+            // [Phase 8] Update selection state to reflect status change immediately
+            if (selectedJob?.id === id) {
+                setSelectedJob(prev => prev ? { ...prev, status: newStatus } : null);
+            }
         } else {
             console.error('Failed to update status:', error);
         }
@@ -80,7 +123,7 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
     };
 
     const deleteInsight = async (id: string) => {
-        if (!confirm("System Query: Delete this record permanently from the neural vault?")) return;
+        if (!confirm("Consulta do Sistema: Excluir este registro permanentemente do cofre neural?")) return;
         setUpdatingId(id);
         const { error } = await supabase
             .from('hunter_insights')
@@ -133,7 +176,7 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
         return (
             <div className="w-full h-full flex flex-col items-center justify-center bg-[#050505] text-red-500/50">
                 <Loader2 className="w-12 h-12 animate-spin mb-4" />
-                <span className="font-mono text-sm tracking-widest uppercase">Decriptando CRM...</span>
+                <span className="font-mono text-sm tracking-widest uppercase">Descriptografando CRM...</span>
             </div>
         );
     }
@@ -154,7 +197,7 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                         {activeTab === 'Targets' ? <Target className="h-8 w-8 text-red-400" /> : <BrainCircuit className="h-8 w-8 text-cyan-400" />}
                     </div>
                     <div className="flex flex-col items-start justify-center">
-                        <h1 className={`text-3xl font-bold tracking-tight leading-none transition-colors duration-500 ${activeTab === 'Targets' ? 'text-red-400' : 'text-cyan-400'}`}>The Hunter's Board</h1>
+                        <h1 className={`text-3xl font-bold tracking-tight leading-none transition-colors duration-500 ${activeTab === 'Targets' ? 'text-red-400' : 'text-cyan-400'}`}>Mural do Caçador</h1>
 
                         {/* Tabs de Navegação */}
                         <div className="flex items-center gap-4 mt-2">
@@ -162,13 +205,13 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                                 onClick={() => setActiveTab('Targets')}
                                 className={`text-xs uppercase tracking-widest font-bold py-1 px-2 rounded-md transition-all ${activeTab === 'Targets' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'text-slate-500 hover:text-slate-300'}`}
                             >
-                                Targets Acquired
+                                Alvos Adquiridos
                             </button>
                             <button
                                 onClick={() => setActiveTab('Profile')}
                                 className={`text-xs uppercase tracking-widest font-bold py-1 px-2 rounded-md transition-all ${activeTab === 'Profile' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'}`}
                             >
-                                My Resume Dash
+                                Painel de Currículos
                             </button>
                         </div>
 
@@ -176,7 +219,7 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                 </div>
                 <div className={`px-5 py-2 rounded-lg border font-mono text-xs flex items-center gap-3 transition-colors duration-500 ${activeTab === 'Targets' ? 'border-red-500/20 bg-red-500/5 text-red-400' : 'border-cyan-500/20 bg-cyan-500/5 text-cyan-400'}`}>
                     <Briefcase className="w-4 h-4" />
-                    <span>{insights.length} DOCUMENTS LOGGED</span>
+                    <span>{insights.length} DOCUMENTOS REGISTRADOS</span>
                 </div>
             </header>
 
@@ -185,10 +228,12 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                 {/* 1. ABA TARGETS (Jobs / Vagas) */}
                 {activeTab === 'Targets' && (
                     <>
+                        <MarketOracle userId={userId} />
+
                         {targetJobs.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-red-500/20 rounded-2xl bg-red-500/5">
                                 <Target className="w-16 h-16 text-red-500/40 mb-4" />
-                                <h2 className="text-xl font-bold text-red-400 tracking-wider">NO ACTIVE TARGETS</h2>
+                                <h2 className="text-xl font-bold text-red-400 tracking-wider">NENHUM ALVO ATIVO</h2>
                                 <p className="text-slate-400 mt-2 font-mono text-sm max-w-md text-center">
                                     Transmita arquivos de Descrição de Vagas para a Vault e acione o protocolo HunterZim.
                                 </p>
@@ -204,65 +249,127 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                                             exit={{ opacity: 0, scale: 0.95 }}
                                             className="flex flex-col rounded-2xl border border-white/5 bg-[#0a0a0a] hover:border-red-500/30 hover:shadow-[0_0_30px_rgba(239,68,68,0.1)] transition-all overflow-hidden"
                                         >
-                                            <div className="p-6 pb-4 border-b border-white/5 flex items-start justify-between">
+                                            <div 
+                                                onClick={() => setSelectedJob(insight)}
+                                                className="p-6 pb-4 border-b border-white/5 flex items-start justify-between cursor-pointer group/card"
+                                            >
                                                 <div className="pr-4">
-                                                    <h3 className="text-lg font-bold text-slate-200 line-clamp-1 truncate" title={insight.document_name}>
+                                                    <h3 className="text-lg font-bold text-slate-200 line-clamp-1 truncate group-hover/card:text-red-400 transition-colors" title={insight.document_name}>
                                                         {insight.document_name}
                                                     </h3>
                                                     <p className="text-xs text-slate-500 font-mono mt-1">
                                                         ID: {insight.id.split('-')[0]} • {new Date(insight.created_at).toLocaleDateString()}
                                                     </p>
                                                 </div>
-                                                <div className={`shrink-0 flex flex-col items-center justify-center p-3 rounded-xl border ${getScoreColor(insight.score)}`}>
+                                                <div className={`shrink-0 flex flex-col items-center justify-center p-3 rounded-xl border transition-transform group-hover/card:scale-110 ${getScoreColor(insight.score)}`}>
                                                     <span className="text-2xl font-black leading-none">{insight.score}</span>
                                                     <span className="text-[10px] uppercase font-bold tracking-widest mt-1 opacity-80">Match</span>
                                                 </div>
                                             </div>
 
                                             <div className="p-6 flex-1 flex flex-col gap-4">
-                                                <div>
-                                                    <h4 className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-2">Summary</h4>
+                                                <div onClick={() => setSelectedJob(insight)} className="cursor-pointer">
+                                                    <h4 className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-2">Resumo</h4>
                                                     <p className="text-sm text-slate-300 leading-relaxed">
                                                         {insight.summary}
                                                     </p>
                                                 </div>
 
+                                                {/* [Phase 2] Clash Simulator - Gap Analysis Display */}
+                                                {insight.gap_analysis && insight.gap_analysis.match_percentage !== undefined && (
+                                                    <div className="mt-2 space-y-4">
+                                                        <div className="flex items-center justify-between bg-red-500/5 border border-red-500/20 rounded-xl p-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <Zap className="w-4 h-4 text-yellow-400" />
+                                                                <span className="text-xs font-bold uppercase tracking-tighter text-slate-400">Match de Combate</span>
+                                                            </div>
+                                                            <div className="text-lg font-black text-red-400 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+                                                                {insight.gap_analysis.match_percentage}%
+                                                            </div>
+                                                        </div>
+
+                                                        {insight.gap_analysis.strong_matches && insight.gap_analysis.strong_matches.length > 0 && (
+                                                            <div>
+                                                                <h4 className="text-[10px] uppercase font-black text-emerald-500/70 tracking-widest mb-1.5 flex items-center gap-1.5">
+                                                                    <CheckCircle2 className="w-3 h-3" /> Pontos Fortes
+                                                                </h4>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {insight.gap_analysis.strong_matches.slice(0, 4).map((skill, sIdx) => (
+                                                                        <span key={sIdx} className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono">
+                                                                            {skill}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {insight.gap_analysis.missing_skills && insight.gap_analysis.missing_skills.length > 0 && (
+                                                            <div>
+                                                                <h4 className="text-[10px] uppercase font-black text-rose-500/70 tracking-widest mb-1.5 flex items-center gap-1.5">
+                                                                    <AlertTriangle className="w-3 h-3" /> Gaps Técnicos
+                                                                </h4>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {insight.gap_analysis.missing_skills.slice(0, 4).map((skill, sIdx) => (
+                                                                        <span key={sIdx} className="text-[9px] px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 font-mono">
+                                                                            {skill}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
                                                 <div className="mt-auto pt-4 flex items-center justify-between border-t border-white/5">
                                                     <div className="flex items-center gap-2">
                                                         {getStatusIcon(insight.status)}
                                                         <span className={`text-xs font-bold uppercase tracking-widest ${insight.status === 'Applied' ? 'text-emerald-400' : insight.status === 'Rejected' ? 'text-rose-400' : 'text-amber-400'}`}>
-                                                            {insight.status}
+                                                            {insight.status === 'Applied' ? 'Candidatado' : insight.status === 'Rejected' ? 'Rejeitado' : insight.status === 'Evaluating' ? 'Avaliando' : insight.status}
                                                         </span>
                                                     </div>
 
                                                     <div className="flex items-center gap-2">
-                                                        <button onClick={() => openDocument(insight.document_name)} className="p-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition-colors" title="Open Document">
+                                                        <button onClick={() => openDocument(insight.document_name)} className="p-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition-colors" title="Abrir Documento">
                                                             <ExternalLink className="w-4 h-4" />
                                                         </button>
-                                                        <button onClick={() => deleteInsight(insight.id)} disabled={updatingId === insight.id} className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 transition-colors disabled:opacity-50" title="Delete Profile">
+                                                         <button onClick={() => deleteInsight(insight.id)} disabled={updatingId === insight.id} className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 transition-colors disabled:opacity-50" title="Excluir Registro">
                                                             {updatingId === insight.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                                                         </button>
 
                                                         <div className="relative group ml-2">
                                                             <button disabled={updatingId === insight.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-slate-300 transition-colors disabled:opacity-50">
-                                                                Update Status
+                                                                Atualizar Status
                                                                 <ChevronDown className="w-3 h-3" />
                                                             </button>
 
                                                             {/* Dropdown Menu on hover */}
                                                             <div className="absolute bottom-full right-0 mb-2 w-36 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                                                                 <button onClick={() => updateStatus(insight.id, 'Evaluating')} className="w-full text-left px-4 py-2 text-xs font-mono text-amber-400 hover:bg-white/5 flex items-center gap-2">
-                                                                    <Activity className="w-3 h-3" /> Evaluating
+                                                                    <Activity className="w-3 h-3" /> Avaliando
                                                                 </button>
                                                                 <button onClick={() => updateStatus(insight.id, 'Applied')} className="w-full text-left px-4 py-2 text-xs font-mono text-emerald-400 hover:bg-white/5 flex items-center gap-2 border-t border-white/5">
-                                                                    <CheckCircle2 className="w-3 h-3" /> Applied
+                                                                    <CheckCircle2 className="w-3 h-3" /> Candidatado
                                                                 </button>
                                                                 <button onClick={() => updateStatus(insight.id, 'Rejected')} className="w-full text-left px-4 py-2 text-xs font-mono text-rose-400 hover:bg-white/5 flex items-center gap-2 border-t border-white/5">
-                                                                    <XCircle className="w-3 h-3" /> Rejected
+                                                                    <XCircle className="w-3 h-3" /> Rejeitado
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     </div>
+                                                </div>
+
+                                                {/* [Phase 6] Voice AI Interview Button */}
+                                                <div className="mt-4">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSelectedInterviewJob(insight);
+                                                            setIsInterviewOpen(true);
+                                                        }}
+                                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-[11px] font-black font-mono text-red-500 transition-all uppercase tracking-widest group/btn"
+                                                    >
+                                                        <Mic className="w-4 h-4 group-hover/btn:scale-125 transition-transform" />
+                                                        Simular Entrevista (IA de Voz)
+                                                    </button>
                                                 </div>
                                             </div>
                                         </motion.div>
@@ -284,7 +391,7 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                         {!latestResume ? (
                             <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-cyan-500/20 rounded-2xl bg-cyan-500/5">
                                 <FileText className="w-16 h-16 text-cyan-500/40 mb-4" />
-                                <h2 className="text-xl font-bold text-cyan-400 tracking-wider">NO RESUME FOUND</h2>
+                                <h2 className="text-xl font-bold text-cyan-400 tracking-wider">NENHUM CURRÍCULO ENCONTRADO</h2>
                                 <p className="text-slate-400 mt-2 font-mono text-sm max-w-md text-center">
                                     Você não analisou nenhum Currículo ainda. Upe seu PDF de Currículo na Vault e solicite uma análise profunda.
                                 </p>
@@ -300,7 +407,7 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                                             {latestResume.score}
                                         </div>
                                         <div className="text-xs font-mono text-slate-400 uppercase tracking-widest mt-2 border border-white/10 px-3 py-1 rounded-full bg-white/5">
-                                            Seniority Score
+                                            Pontuação de Senioridade
                                         </div>
                                     </div>
 
@@ -345,13 +452,22 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                                     <div className="border border-white/5 bg-[#0a0a0a] rounded-2xl p-6 hover:border-cyan-500/30 transition-colors group">
                                         <h3 className="text-sm font-bold tracking-widest text-slate-400 uppercase flex items-center gap-2 mb-4">
                                             <AlertTriangle className="w-4 h-4 text-rose-400 group-hover:text-cyan-400 transition-colors" />
-                                            Tactical Action Plan
+                                            Plano de Ação Tático
                                         </h3>
-                                        <div className="p-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 text-sm text-cyan-100/80 leading-relaxed max-w-full overflow-hidden">
-                                            {latestResume.action_plan ? (
-                                                <div dangerouslySetInnerHTML={{ __html: latestResume.action_plan.replace(/\n/g, '<br/>') }} />
+                                        <div className="space-y-3">
+                                            {latestResume.action_plan && Array.isArray(latestResume.action_plan) && latestResume.action_plan.length > 0 ? (
+                                                latestResume.action_plan.map((step, idx) => (
+                                                    <div key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 text-sm text-cyan-100/90 leading-relaxed group/step hover:bg-cyan-500/10 transition-colors">
+                                                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center text-[10px] font-bold text-cyan-400 border border-cyan-500/30 group-hover/step:scale-110 transition-transform">
+                                                            {idx + 1}
+                                                        </div>
+                                                        <span>{step}</span>
+                                                    </div>
+                                                ))
                                             ) : (
-                                                <span className="text-slate-500 font-mono">Nenhum plano de ação definido.</span>
+                                                <div className="p-4 rounded-xl border border-dashed border-white/10 bg-white/5 text-center">
+                                                    <span className="text-slate-500 font-mono text-xs uppercase tracking-widest">Nenhum plano de ação definido.</span>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -363,6 +479,33 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                 )}
 
             </main>
+
+            {/* [Phase 8] Target Dossier Full-Screen View */}
+            <AnimatePresence>
+                {selectedJob && (
+                    <TargetDossier 
+                        job={selectedJob}
+                        userId={userId}
+                        onClose={() => setSelectedJob(null)}
+                        onUpdateStatus={updateStatus}
+                        openDocument={openDocument}
+                        onStartInterview={(job) => {
+                            setSelectedInterviewJob(job);
+                            setIsInterviewOpen(true);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* [Phase 6] Interview Simulator Modal */}
+            <InterviewSimulator 
+                isOpen={isInterviewOpen}
+                onClose={() => setIsInterviewOpen(false)}
+                jobId={selectedInterviewJob?.id || ''}
+                jobDescription={selectedInterviewJob?.summary || ''}
+                gapAnalysis={selectedInterviewJob?.gap_analysis || {}}
+                userName={userName}
+            />
         </div>
     );
 }

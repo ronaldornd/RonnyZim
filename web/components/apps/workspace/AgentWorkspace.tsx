@@ -28,23 +28,23 @@ import {
 
 import ReactMarkdown from 'react-markdown';
 
-// Hardcoded agents data based on our DB Seed
+// Dados dos agentes baseados no Seed do DB
 const INTERNAL_AGENTS = [
-    { id: 'orchestrator', name: 'Orquestrador Central', role: 'Executive conscience', icon: BrainCircuit, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
-    { id: 'hunterzim', name: 'HunterZim', role: 'Career opportunist', icon: Terminal, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
-    { id: 'career-strategist', name: 'Estrategista de Carreira', role: 'Long-term visionary', icon: Briefcase, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30' },
-    { id: 'knowledge-curator', name: 'Curador de Conhecimento', role: 'Intellectual filter', icon: Library, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
-    { id: 'emotional-analyst', name: 'Analista Emocional', role: 'Translates emotion', icon: HeartHandshake, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30' },
-    { id: 'astro-guide', name: 'Guia Astro-Analítico', role: 'Mystical rationalist', icon: Sparkles, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/30' },
-    { id: 'productivity-architect', name: 'Arquiteto de Produtividade', role: 'Practical builder', icon: LayoutTemplate, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30' },
-    { id: 'pattern-analyst', name: 'Analista de Padrões', role: 'Observational irony', icon: Activity, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30' },
-    { id: 'digital-identity-builder', name: 'Construtor de Identidade', role: 'Branding expert', icon: Fingerprint, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/30' },
-    { id: 'long-term-visionary', name: 'Visionário de Longo Prazo', role: 'Deep thinker', icon: Telescope, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
-    { id: 'coherence-guardian', name: 'Guardião de Coerência', role: 'Clinical auditor', icon: Scale, color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30' },
-    { id: 'daily-synthesizer', name: 'Sintetizador Diário', role: 'Objective narrator', icon: BookOpen, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/30' },
-    { id: 'creative-innovator', name: 'Inovador Criativo', role: 'Chaotic good', icon: Lightbulb, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' },
-    { id: 'risk-analyst', name: 'Analista de Risco', role: 'Catastrophic simulation', icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-500/10', border: 'border-red-500/30' },
-    { id: 'energy-regulator', name: 'Regulador de Energia', role: 'Protective boundary', icon: Battery, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30' },
+    { id: 'orchestrator', name: 'Orquestrador Central', role: 'Consciência executiva', icon: BrainCircuit, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
+    { id: 'hunterzim', name: 'HunterZim', role: 'Oportunista de carreira', icon: Terminal, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
+    { id: 'career-strategist', name: 'Estrategista de Carreira', role: 'Visionário de longo prazo', icon: Briefcase, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30' },
+    { id: 'knowledge-curator', name: 'Curador de Conhecimento', role: 'Filtro intelectual', icon: Library, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
+    { id: 'emotional-analyst', name: 'Analista Emocional', role: 'Tradutor de emoções', icon: HeartHandshake, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30' },
+    { id: 'astro-guide', name: 'Guia Astro-Analítico', role: 'Racionalista místico', icon: Sparkles, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/30' },
+    { id: 'productivity-architect', name: 'Arquiteto de Produtividade', role: 'Construtor prático', icon: LayoutTemplate, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30' },
+    { id: 'pattern-analyst', name: 'Analista de Padrões', role: 'Ironia observacional', icon: Activity, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30' },
+    { id: 'digital-identity-builder', name: 'Construtor de Identidade', role: 'Especialista em branding', icon: Fingerprint, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/30' },
+    { id: 'long-term-visionary', name: 'Visionário de Longo Prazo', role: 'Pensador profundo', icon: Telescope, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
+    { id: 'coherence-guardian', name: 'Guardião de Coerência', role: 'Auditor clínico', icon: Scale, color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30' },
+    { id: 'daily-synthesizer', name: 'Sintetizador Diário', role: 'Narrador objetivo', icon: BookOpen, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/30' },
+    { id: 'creative-innovator', name: 'Inovador Criativo', role: 'Inovação caótica', icon: Lightbulb, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' },
+    { id: 'risk-analyst', name: 'Analista de Risco', role: 'Simulador de catástrofes', icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-500/10', border: 'border-red-500/30' },
+    { id: 'energy-regulator', name: 'Regulador de Energia', role: 'Fronteira protetora', icon: Battery, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30' },
 ];
 
 interface AgentWorkspaceProps {
@@ -59,7 +59,7 @@ export default function AgentWorkspace({ userId }: AgentWorkspaceProps) {
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // Hook Initialization
+    // Inicialização do Hook
     const {
         messages,
         isLoading,
@@ -76,7 +76,7 @@ export default function AgentWorkspace({ userId }: AgentWorkspaceProps) {
             const newAgent = INTERNAL_AGENTS.find(a => a.id === newAgentId);
             if (newAgent) {
                 setActiveAgentId(newAgent.id);
-                addSystemMessage(`🔄 **[Semantic Router]** Roteando contexto e entregando sessão para **${newAgent.name}**...`);
+                addSystemMessage(`🔄 **[Router Semântico]** Roteando contexto e entregando sessão para **${newAgent.name}**...`);
             }
         }
     });
@@ -102,7 +102,7 @@ export default function AgentWorkspace({ userId }: AgentWorkspaceProps) {
                 // Há uma intenção pendente de outro aplicativo (ex: Data Vault clicou "Analisar Arquivo")
                 setActiveAgentId(intent.agentId);
                 setTimeout(() => {
-                    addSystemMessage(`🔌 **CONEXÃO DE SISTEMA ESTABELECIDA**\n\nRecebi o arquivo **${intent.fileName}** da Vault.\nIniciando extração de dados e protocolo de análise nativa...`);
+                    addSystemMessage(`🔌 **CONEXÃO DE SISTEMA ESTABELECIDA**\n\nRecebi o arquivo **${intent.fileName}** do Cofre.\nIniciando extração de dados e protocolo de análise nativa...`);
 
                     // Dispara a análise no backend
                     fetch('/api/analyze', {
@@ -112,12 +112,12 @@ export default function AgentWorkspace({ userId }: AgentWorkspaceProps) {
                     })
                         .then(async (res) => {
                             const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || 'Falha na Endpoint');
+                            if (!res.ok) throw new Error(data.error || 'Falha no Endpoint');
                             // Injeta o card na tela
                             addSystemMessage('', 'analysis', data);
                         })
                         .catch(err => {
-                            console.error('Analyzer Bridge Error:', err);
+                            console.error('Erro na Bridge do Analisador:', err);
                             addSystemMessage(`❌ **FALHA DE CONEXÃO**\n\nNão foi possível concluir a análise do documento.\n\nDetalhes: ${err.message}`);
                         });
 
@@ -136,7 +136,7 @@ export default function AgentWorkspace({ userId }: AgentWorkspaceProps) {
         };
     }, [addSystemMessage]);
 
-    // Slash Commands Logic
+    // Lógica de Comandos Slash
     const COMMANDS = [
         { id: 'clear', label: '/clear', description: 'Purificar registro da sessão' },
         { id: 'orchestrator', label: '/orchestrator', description: 'Forçar Roteamento: Orquestrador' },
@@ -152,7 +152,7 @@ export default function AgentWorkspace({ userId }: AgentWorkspaceProps) {
             addSystemMessage('🧹 **Histórico Purificado.** Registros confidenciais expurgados com sucesso.');
         } else {
             setActiveAgentId(cmd.id);
-            addSystemMessage(`🔄 **[Manual Override]** Subrotina de Forçamento ativada. Contexto ancorado em **${cmd.label.replace('/', '')}**.`);
+            addSystemMessage(`🔄 **[Substituição Manual]** Subrotina de Forçamento ativada. Contexto ancorado em **${cmd.label.replace('/', '')}**.`);
         }
         setInputVal('');
         setShowCommandMenu(false);
@@ -234,39 +234,73 @@ export default function AgentWorkspace({ userId }: AgentWorkspaceProps) {
                             <p className="text-sm">Inicie o comando para {activeAgent.name}.</p>
                         </div>
                     ) : (
-                        messages.map((msg) => (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                key={msg.id}
-                                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
-                                <div
-                                    className={`
-                    max-w-[75%] p-4 rounded-2xl text-[15px] leading-relaxed relative shadow-md
-                    ${msg.role === 'user'
-                                            ? 'bg-transparent text-primary rounded-br-sm border border-primary/40 shadow-[0_0_15px_rgba(0,255,65,0.1)]'
-                                            : `bg-tactical/80 text-text-hud border border-primary/20 rounded-bl-sm backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.5)]`
+                        messages.map((msg) => {
+                            const isModel = msg.role === 'model';
+                            
+                            // Lógica de Renderização Inteligente de Conteúdo
+                            const renderContent = () => {
+                                if (msg.role === 'user') return msg.content;
+
+                                // 1. Tipos Explícitos (Interceptados pelo useAgentChat)
+                                if (msg.type === 'analysis' && msg.analysisData) return <AnalysisCard data={msg.analysisData} />;
+                                if (msg.type === 'knowledge_gap' && msg.gapData) return <GapCard gapData={msg.gapData} onSubmit={resolveKnowledgeGap} />;
+                                if (msg.type === 'quest_generated' && msg.questData) return <QuestGeneratedCard questData={msg.questData} userId={userId} />;
+
+                                // 2. Detecção de JSON "vazado" (Quando a IA responde com JSON bruto em vez de chamar a ferramenta)
+                                const trimmed = msg.content.trim();
+                                if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                                    try {
+                                        const parsed = JSON.parse(trimmed);
+                                        // Detecção de Gap de Conhecimento "acidental"
+                                        if (parsed.question_to_user && parsed.category) {
+                                            return <GapCard gapData={parsed} onSubmit={resolveKnowledgeGap} />;
                                         }
-                  `}
+                                        // Detecção de Quest "acidental"
+                                        if (parsed.title && parsed.description && parsed.xp_reward) {
+                                            return <QuestGeneratedCard questData={parsed} userId={userId} />;
+                                        }
+                                        // Se for outro JSON, formata como código
+                                        return <pre className="bg-black/40 p-3 rounded-lg text-[13px] font-mono text-emerald-400 overflow-x-auto border border-emerald-500/20">{JSON.stringify(parsed, null, 2)}</pre>;
+                                    } catch (e) { /* Segue para renderização normal */ }
+                                }
+
+                                // 3. Resposta de Texto Padrão (Typewriter + Markdown)
+                                return (
+                                    <TypewriterText
+                                        content={msg.content}
+                                        speed={msg.id === messages[messages.length - 1]?.id && msg.role === 'model' ? 15 : 0}
+                                    />
+                                );
+                            };
+
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    key={msg.id}
+                                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    {msg.role === 'user' ? (
-                                        msg.content
-                                    ) : msg.type === 'analysis' && msg.analysisData ? (
-                                        <AnalysisCard data={msg.analysisData} />
-                                    ) : msg.type === 'knowledge_gap' && msg.gapData ? (
-                                        <GapCard gapData={msg.gapData} onSubmit={resolveKnowledgeGap} />
-                                    ) : msg.type === 'quest_generated' && msg.questData ? (
-                                        <QuestGeneratedCard questData={msg.questData} />
-                                    ) : (
-                                        <TypewriterText
-                                            content={msg.content}
-                                            speed={msg.id === messages[messages.length - 1]?.id && msg.role === 'model' ? 15 : 0}
-                                        />
-                                    )}
-                                </div>
-                            </motion.div>
-                        ))
+                                    <div
+                                        className={`
+                                            max-w-[85%] p-5 rounded-2xl text-[15px] leading-relaxed relative shadow-xl transition-all duration-500
+                                            ${msg.role === 'user'
+                                                ? 'bg-gradient-to-br from-green-900/20 to-transparent text-primary rounded-br-sm border border-primary/30 shadow-[0_0_20px_rgba(0,255,65,0.05)]'
+                                                : 'bg-[#0A0F0A]/90 text-text-hud border border-primary/10 rounded-bl-sm backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]'
+                                            }
+                                        `}
+                                    >
+                                        {/* Sutil brilho interior para mensagens do modelo */}
+                                        {isModel && (
+                                            <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-primary/5 to-transparent pointer-events-none" />
+                                        )}
+                                        
+                                        <div className="relative z-10">
+                                            {renderContent()}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })
                     )}
 
                     {isLoading && !activeLearningContext && (
@@ -358,6 +392,7 @@ export default function AgentWorkspace({ userId }: AgentWorkspaceProps) {
         }
         .custom-scrollbar:hover::-webkit-scrollbar-thumb {
           background-color: rgba(255, 255, 255, 0.2);
+          border-radius: 20px;
         }
       `}} />
         </div>

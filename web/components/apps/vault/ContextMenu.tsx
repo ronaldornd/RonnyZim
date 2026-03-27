@@ -28,7 +28,7 @@ export default function ContextMenu({ x, y, isOpen, onClose, onAction, fileName 
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => {
-            document.addEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [isOpen, onClose]);
 
@@ -75,7 +75,7 @@ export default function ContextMenu({ x, y, isOpen, onClose, onAction, fileName 
                         className="flex items-center gap-3 px-3 py-2 hover:bg-amber-500/10 rounded-lg text-sm text-amber-400 transition-colors text-left group"
                     >
                         <BrainCircuit className="w-4 h-4 group-hover:animate-pulse" />
-                        Analyze with HunterZim
+                        Analisar com HunterZim
                     </button>
 
                     <div className="h-[1px] bg-white/5 my-1 mx-2" />

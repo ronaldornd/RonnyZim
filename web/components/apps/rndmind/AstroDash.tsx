@@ -69,7 +69,7 @@ function getCachedData(): AstroData | null {
         if (!raw) return null;
         const cached: AstroData = JSON.parse(raw);
         const today = new Date().toISOString().split('T')[0];
-        // Return only if the cached date matches today
+        // Retorna apenas se a data do cache corresponder a hoje
         if (cached.date_key === today) return cached;
         return null;
     } catch {
@@ -81,7 +81,7 @@ function setCachedData(data: AstroData) {
     if (typeof window === 'undefined') return;
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    } catch { /* ignore quota errors */ }
+    } catch { /* ignorar erros de cota */ }
 }
 
 export default function AstroDash() {
@@ -92,7 +92,7 @@ export default function AstroDash() {
     const [fromCache, setFromCache] = useState(false);
     const [birthDate, setBirthDate] = useState<string | null>(null);
 
-    // Fetch user's natal data from Supabase user_facts
+    // Carrega o perfil natal do usuário de user_facts no Supabase
     const loadUserProfile = async (): Promise<{ bd: string | null; bt: string | null; bc: string | null }> => {
         try {
             const supabase = createClient();
@@ -100,11 +100,11 @@ export default function AstroDash() {
             if (!session) return { bd: null, bt: null, bc: null };
             const { data: facts } = await supabase
                 .from('user_facts')
-                .select('property_key, fact_value')
+                .select('property_key, value')
                 .eq('user_id', session.user.id)
                 .in('property_key', ['birth_date', 'birth_time', 'birth_city']);
             const fMap: Record<string, string> = {};
-            (facts || []).forEach((f: any) => { fMap[f.property_key] = f.fact_value; });
+            (facts || []).forEach((f: any) => { fMap[f.property_key] = f.value; });
             const bd = fMap.birth_date || null;
             const bt = fMap.birth_time || null;
             const bc = fMap.birth_city || null;
@@ -128,7 +128,11 @@ export default function AstroDash() {
         }
 
         try {
-            // Get full natal profile from user_facts
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user.id;
+
+            // Obtém perfil natal completo de user_facts
             const natal = await loadUserProfile();
             const params = new URLSearchParams();
             if (natal.bd) params.set('birthDate', natal.bd);
@@ -137,12 +141,48 @@ export default function AstroDash() {
             const qs = params.toString() ? `?${params.toString()}` : '';
             const res = await fetch(`/api/rndmind/daily${qs}`);
             if (!res.ok) throw new Error('Falha ao consultar o motor astral.');
-            const json: AstroData = await res.json();
+            const json: AstroData & { daily_energy_score: number } = await res.json();
+            
             setCachedData(json);
             setData(json);
             setFromCache(false);
-        } catch (err: any) {
-            setError(err.message || 'Erro desconhecido.');
+
+            // [Phase 4] Salva pontuação de energia diária e afinidade técnica em user_facts
+            if (userId) {
+                const factsToUpsert = [];
+                
+                if (json.daily_energy_score !== undefined) {
+                    factsToUpsert.push({
+                        user_id: userId,
+                        category: 'astrology',
+                        property_key: 'astro_daily_energy',
+                        value: String(json.daily_energy_score)
+                    });
+                }
+
+                const data = json as any;
+                if (data.technical_affinity) {
+                    factsToUpsert.push({
+                        user_id: userId,
+                        category: 'astrology',
+                        property_key: 'astro_technical_focus',
+                        value: JSON.stringify(json.technical_affinity)
+                    });
+                }
+
+                if (factsToUpsert.length > 0) {
+                    const { error: upsertError } = await supabase
+                        .from('user_facts')
+                        .upsert(factsToUpsert, { onConflict: 'user_id,property_key' });
+                    
+                    if (upsertError) {
+                        console.error('❌ Falha ao salvar fatos astrais no Supabase:', upsertError);
+                    } else {
+                        console.log(`✨ Astral sync complete: Energy and Technical Focus saved.`);
+                    }
+                }
+            }
+
         } finally {
             setLoading(false);
         }
@@ -175,20 +215,22 @@ export default function AstroDash() {
                         </div>
                         <div>
                             <h1 className="text-2xl font-black text-white tracking-tight">RND Mind</h1>
-                            <p className="text-xs font-mono text-violet-400/70 uppercase tracking-widest">Astro-Analytical Dashboard</p>
+                            <p className="text-xs font-mono text-violet-400/70 uppercase tracking-widest">Painel Astro-Analítico</p>
                         </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-1">
-                        <button
-                            onClick={() => fetchInsights(true)}
-                            disabled={loading}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-slate-400 text-sm
-                                       hover:border-violet-500/40 hover:text-violet-300 hover:bg-violet-500/5 transition-all group disabled:opacity-40"
-                        >
-                            <RefreshCw className={`w-4 h-4 transition-transform ${loading ? 'animate-spin' : 'group-hover:rotate-180 duration-500'}`} />
-                            Atualizar
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => fetchInsights(true)}
+                                disabled={loading}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-slate-400 text-sm
+                                        hover:border-violet-500/40 hover:text-violet-300 hover:bg-violet-500/5 transition-all group disabled:opacity-40"
+                            >
+                                <RefreshCw className={`w-4 h-4 transition-transform ${loading ? 'animate-spin' : 'group-hover:rotate-180 duration-500'}`} />
+                                Atualizar
+                            </button>
+                        </div>
                         {generatedAt && (
                             <span className="text-[10px] font-mono text-slate-600">
                                 {fromCache ? '📦 Cache • ' : '✨ '}Gerado às {generatedAt}
@@ -300,13 +342,13 @@ export default function AstroDash() {
                     <div className="mt-8 flex items-center gap-2 text-[11px] font-mono text-slate-600">
                         <Sparkles className="w-3 h-3 text-violet-500/40" />
                         {birthDate
-                            ? `Análise baseada nos dados natais registrados · Dados transitais de hoje`
-                            : `Configure seu perfil natal em Identity para análises personalizadas`}
+                            ? `Análise baseada nos dados natais registrados · Trânsitos astrológicos de hoje`
+                            : `Configure seu perfil natal na Identidade para análises personalizadas`}
                     </div>
                 )}
             </div>
 
-            {/* Custom scrollbar style */}
+            {/* Estilo de scrollbar customizado */}
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

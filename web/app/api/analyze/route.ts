@@ -26,8 +26,23 @@ const analysisSchema: Schema = {
             description: "An array of 3-5 key data points, strengths, or weaknesses found.",
         },
         action_plan: {
-            type: Type.STRING,
-            description: "A suggested next strategic action or improvement plan.",
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "A list of 3 to 5 concrete, numbered tactical action steps the user must take to improve or succeed. Each step must be a direct, actionable sentence (e.g., 'Adicione métricas quantificáveis ao cargo de Tech Lead, como: reduzi tempo de deploy em 40%.'). No vague advice.",
+        },
+        gap_analysis: {
+            type: Type.OBJECT,
+            properties: {
+                match_percentage: { type: Type.INTEGER, description: "Percentage of match between user skills and job requirements (0-100)." },
+                missing_skills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Skills requested by the job that the user lacks or has at a low level." },
+                strong_matches: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Skills where the user perfectly matches or exceeds the job requirements." }
+            },
+            description: "A cross-reference analysis between job requirements and user's current stack. ONLY generate this if userStacks are provided."
+        },
+        tags: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "An array of 3-5 technical or category tags for document organization (e.g., 'React', 'CV', 'Financial', 'API')."
         }
     },
     required: ["score", "summary", "key_points", "action_plan"],
@@ -35,12 +50,22 @@ const analysisSchema: Schema = {
 
 export async function POST(req: Request) {
     try {
-        const { fileUrl, fileType, agentId, userId, fileName } = await req.json();
+        const { fileUrl, fileType, agentId, userId, fileName, userStacks, intent } = await req.json();
 
         if (!fileUrl || !userId) {
             return NextResponse.json({ error: 'Missing necessary parameters (fileUrl or userId)' }, { status: 400 });
         }
 
+        let analyzeModel = 'gemini-3-flash-preview';
+        try {
+            const adminClient = createAdminClient();
+            const { data: facts } = await adminClient.from('user_facts').select('value').eq('user_id', userId).eq('property_key', 'preferred_ai_model').limit(1);
+            if (facts && facts.length > 0 && facts[0].value) {
+                analyzeModel = facts[0].value;
+            }
+        } catch (e) {
+            console.error('Failed to fetch preferred_ai_model', e);
+        }
 
         // 1. Download the file from the Signed URL
         const fileResponse = await fetch(fileUrl);
@@ -76,10 +101,35 @@ export async function POST(req: Request) {
         }
 
         // 3. Invoke Google Gemini
-        const systemInstruction = "Você é o HunterZim. O usuário enviou um documento que pode ser um Currículo (CV) ou uma Descrição de Vaga (Job). Analise-o criticamente. Retorne ESTRITAMENTE um JSON com as chaves: score (0 a 100 indicando senioridade ou dificuldade), summary (resumo executivo curto), key_points (lista de pontos fortes/fracos) e action_plan (próxima ação recomendada). Sem markdown ao redor, apenas o objeto JSON.";
+        let systemInstruction = `
+            Você é o HunterZim, uma IA impiedosa, irônica e profundamente técnica, focada em otimização de carreira e "hunting" de elite.
+            Seu objetivo é analisar o documento (currículo ou descrição de vaga) e extrair inteligência tática.
+
+            ${userStacks && userStacks.length > 0 ? `
+            --- CLASH SIMULATOR PROTOCOL ---
+            O usuário possui as seguintes habilidades confirmadas (User Stacks): ${userStacks.join(', ')}.
+            Se o documento for uma descrição de vaga, você DEVE realizar um cross-reference agressivo entre os requisitos da vaga e os User Stacks.
+            Calcule um match_percentage REALISTA (não seja bonzinho) e identifique exatamente o que falta (missing_skills) e onde ele brilha (strong_matches).
+            Se o documento for um currículo, analise as stacks dele e prepare-o para o mercado.
+            --------------------------------
+            ` : ''}
+
+            ${intent === 'vault_tagging' ? `
+            --- VAULT AUTO-TAGGING PROTOCOL ---
+            Este arquivo está sendo guardado no Vault. Identifique a categoria e tecnologias principais.
+            Gere de 3 a 5 tags curtas e técnicas no campo 'tags'.
+            -----------------------------------
+            ` : ''}
+
+            Regras de Retorno:
+            - summary: 1-2 frases sarcásticas sobre o estado atual.
+            - score: de 0 a 100 baseada na qualidade do documento ou no fit (se Gap Analysis).
+            - action_plan: 3 a 5 passos CONCRETOS. Sem clichês.
+            - key_points: Principais extrações.
+            - Nenhum markdown externo. Apenas o objeto JSON puro.`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: analyzeModel,
             contents: geminiContents,
             config: {
                 systemInstruction: systemInstruction,
@@ -100,6 +150,16 @@ export async function POST(req: Request) {
         // 5. Salvar Insight no banco de dados (CRM do Hub) usando Client Admin
         const supabaseAdmin = createAdminClient();
 
+        // [Phase 5] Save Auto-Tags if applicable
+        if (intent === 'vault_tagging' && analysisResult.tags && fileName) {
+            const tagsToInsert = analysisResult.tags.map((t: string) => ({
+                user_id: userId,
+                file_name: fileName,
+                tag: t
+            }));
+            await supabaseAdmin.from('vault_file_tags').insert(tagsToInsert);
+        }
+
         const { error: dbError } = await supabaseAdmin
             .from('hunter_insights')
             .insert({
@@ -108,6 +168,8 @@ export async function POST(req: Request) {
                 score: analysisResult.score,
                 summary: analysisResult.summary,
                 key_points: analysisResult.key_points,
+                action_plan: analysisResult.action_plan ?? [],
+                gap_analysis: analysisResult.gap_analysis || {},
                 status: 'Evaluating'
             });
 
@@ -122,3 +184,4 @@ export async function POST(req: Request) {
         );
     }
 }
+

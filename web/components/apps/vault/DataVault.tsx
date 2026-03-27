@@ -92,11 +92,31 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
             // Mostrar um toast de erro se necessário
         } else {
             await fetchFiles();
+
+            // [Phase 5] Auto-Tagging Trigger (Silent)
+            try {
+                const { data: uploadInfo } = await supabase.storage.from('user_files').createSignedUrl(filePath, 60);
+                if (uploadInfo?.signedUrl) {
+                    fetch('/api/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fileUrl: uploadInfo.signedUrl,
+                            fileName: file.name,
+                            fileType: file.type,
+                            userId: userId,
+                            intent: 'vault_tagging'
+                        })
+                    }).catch(err => console.error("Auto-tagging falhou:", err));
+                }
+            } catch (err) {
+                console.error("Falha ao iniciar auto-tagging:", err);
+            }
         }
         setUploading(false);
     };
 
-    // --- Drag and Drop Handlers ---
+    // --- Handlers de Drag and Drop ---
     const onDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(true);
@@ -115,7 +135,7 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
         }
     };
 
-    // --- Context Menu Handlers ---
+    // --- Handlers de Menu de Contexto ---
     const handleContextMenu = (e: React.MouseEvent, fileName: string) => {
         e.preventDefault();
         setSelectedFile(fileName);
@@ -155,7 +175,7 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
                 window.URL.revokeObjectURL(url);
             }
         } else if (action === 'open') {
-            // Como é um bucket privado, criar um signed url de curto tempo para view
+            // Como é um bucket privado, criar um signed url de curto tempo para visualização
             const { data, error } = await supabase.storage.from('user_files').createSignedUrl(path, 60);
             if (data?.signedUrl) {
                 window.open(data.signedUrl, '_blank');
@@ -172,10 +192,27 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
                 return;
             }
 
+            // [Phase 2] Buscar Stacks do Usuário para o Clash Simulator
+            const { data: masteryData } = await supabase
+                .from('user_stack_mastery')
+                .select('global_stacks(name)')
+                .eq('user_id', userId)
+                .eq('is_active', true);
+
+            const userStacks = masteryData?.map((m: any) => m.global_stacks.name) || [];
+
             // Encontra o arquivo selecionado para obter o mimeType correto
             const fileData = files.find(f => f.name === contextMenu.fileName);
 
-            await triggerAnalysis(uploadInfo.signedUrl, contextMenu.fileName || '', 'hunterzim', userId, fileData?.metadata?.mimetype);
+            await triggerAnalysis(
+                uploadInfo.signedUrl,
+                contextMenu.fileName || '',
+                'hunterzim',
+                userId,
+                fileData?.metadata?.mimetype,
+                userStacks,
+                'vault_tagging' // [Phase 5]
+            );
 
             setIsAnalyzing(false);
 
@@ -210,7 +247,7 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
             onDragLeave={onDragLeave}
             onDrop={onDrop}
         >
-            {/* Drag and Drop Overlay */}
+            {/* Overlay de Drag and Drop */}
             <AnimatePresence>
                 {isDragging && (
                     <motion.div
@@ -220,14 +257,14 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
                         className="absolute inset-0 z-40 bg-green-500/10 backdrop-blur-sm border-2 border-dashed border-green-500 flex flex-col items-center justify-center p-8 rounded-xl"
                     >
                         <UploadCloud className="w-24 h-24 text-green-400 mb-4 animate-bounce" />
-                        <h2 className="text-4xl font-black tracking-tighter text-white drop-shadow-[0_0_10px_rgba(34,197,94,0.8)] uppercase">
-                            Drop to Upload to Matrix
+                        <h2 className="text-4xl font-black tracking-tighter text-white drop-shadow-[0_0_10px_rgba(34,197,94,0.8)] uppercase text-center">
+                            Solte para Enviar para a Matriz
                         </h2>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Analysis Loading Overlay */}
+            {/* Overlay de Carregamento de Análise */}
             <AnimatePresence>
                 {isAnalyzing && (
                     <motion.div
@@ -241,45 +278,45 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
                             <Loader2 className="w-20 h-20 text-green-400 animate-spin relative z-10" />
                         </div>
                         <h2 className="text-2xl font-black tracking-widest text-green-400 text-center uppercase drop-shadow-[0_0_10px_rgba(34,197,94,0.6)]">
-                            Secure Link Established
+                            Link Seguro Estabelecido
                         </h2>
                         <p className="text-green-500/60 font-mono mt-3 text-center text-sm tracking-widest uppercase">
-                            Transferring payload to HunterZim agent...
+                            Transferindo dados para o agente HunterZim...
                         </p>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Sidebar (Left) */}
+            {/* Sidebar (Esquerda) */}
             <div className="w-64 border-r border-white/5 bg-[#0a0a0a] p-6 hidden md:flex flex-col gap-6">
                 <div>
                     <h2 className="text-xs font-bold tracking-widest text-slate-500 uppercase flex items-center gap-2 mb-4">
                         <DatabaseZap className="w-4 h-4 text-green-400" />
-                        Vault Categories
+                        Categorias do Cofre
                     </h2>
                     <ul className="space-y-2">
                         <li>
                             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-green-500/10 text-green-400 font-mono text-sm border border-green-500/20">
                                 <Folder className="w-4 h-4" />
-                                All Files
+                                Todos os Arquivos
                             </button>
                         </li>
                         <li>
                             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors font-mono text-sm">
                                 <Folder className="w-4 h-4" />
-                                Resumes
+                                Currículos
                             </button>
                         </li>
                         <li>
                             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors font-mono text-sm">
                                 <Folder className="w-4 h-4" />
-                                Study Docs
+                                Documentos de Estudo
                             </button>
                         </li>
                     </ul>
                 </div>
 
-                {/* Upload Button */}
+                {/* Botão de Upload */}
                 <div className="mt-auto">
                     <input
                         type="file"
@@ -293,28 +330,28 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
                         className="w-full flex items-center justify-center gap-2 py-3 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/50 rounded-lg font-bold tracking-widest uppercase text-xs transition-colors"
                     >
                         {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-                        {uploading ? 'Up-linking...' : 'Upload File'}
+                        {uploading ? 'Enviando...' : 'Fazer Upload'}
                     </button>
                 </div>
             </div>
 
-            {/* Main Area (Right) */}
+            {/* Área Principal (Direita) */}
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar" onClick={closeContextMenu}>
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-black tracking-tight text-white mb-1">Encrypted Data Vault</h1>
+                        <h1 className="text-2xl font-black tracking-tight text-white mb-1">Cofre de Dados Criptografado</h1>
                         <p className="text-sm font-mono text-slate-400">Armazenamento privado e seguro de ativos da matriz.</p>
                     </div>
                     {/* Visual de contagem */}
                     <div className="px-4 py-2 rounded-lg border border-white/5 bg-[#0a0a0a] font-mono text-xs text-green-400">
-                        {files.length} ITEMS DETECTED
+                        {files.length} ITENS DETECTADOS
                     </div>
                 </div>
 
                 {loading ? (
                     <div className="w-full h-64 flex flex-col items-center justify-center text-green-500/50">
                         <Loader2 className="w-8 h-8 animate-spin mb-4" />
-                        <span className="font-mono text-sm tracking-widest uppercase">Decriptando Arquivos...</span>
+                        <span className="font-mono text-sm tracking-widest uppercase">Descriptografando Arquivos...</span>
                     </div>
                 ) : files.length === 0 ? (
                     <div className="w-full h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl bg-white/[0.02]">
@@ -354,7 +391,7 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
                 )}
             </div>
 
-            {/* Injeção do ContextMenu que criamos em passo separado */}
+            {/* Injeção do ContextMenu */}
             <ContextMenu
                 isOpen={contextMenu.isOpen}
                 x={contextMenu.x}

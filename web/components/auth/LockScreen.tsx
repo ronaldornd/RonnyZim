@@ -60,7 +60,7 @@ export default function LockScreen({ onLogin }: { onLogin: () => void }) {
         setError('');
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/`,
+                redirectTo: `${window.location.origin}/auth/callback?next=/?type=recovery`,
             });
             if (error) {
                 setError(error.message);
