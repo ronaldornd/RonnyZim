@@ -243,207 +243,220 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
-            <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="w-full max-w-6xl h-[85vh] overflow-hidden border border-red-500/30 bg-[#0a0a0a] shadow-[0_0_50px_rgba(239,68,68,0.2)] rounded-3xl flex flex-col"
+        <div className="w-full h-full bg-background flex flex-col relative">
+            <div
+                className="w-full h-full overflow-hidden bg-card/40 backdrop-blur-xl rounded-[2.5rem] flex flex-col transition-all duration-500"
             >
-                {/* Header Global */}
-                <div className="flex items-center justify-between border-b border-red-500/20 bg-red-500/5 px-6 py-4 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="h-3 w-3 animate-pulse rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,1)]" />
-                        <h2 className="font-mono text-sm font-bold tracking-widest text-red-500 uppercase">
-                            SISTEMA DE ENTREVISTA TÁTICA :: HUNTER-ZIM 2.0
-                        </h2>
+                {/* Header Global - Refined */}
+                <div className="flex items-center justify-between px-10 py-8 shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <div className="h-3 w-3 rounded-full bg-primary shadow-[0_0_15px_rgba(var(--primary),0.8)]" />
+                            <div className="absolute inset-0 h-3 w-3 animate-ping rounded-full bg-primary opacity-40" />
+                        </div>
+                        <div className="flex flex-col">
+                            <h2 className="font-mono text-[10px] font-bold tracking-[0.2em] text-primary uppercase opacity-80">
+                                SISTEMA DE ENTREVISTA TÁTICA
+                            </h2>
+                            <span className="text-[14px] font-bold text-foreground tracking-tight">
+                                HUNTER-ZIM :: ARENA
+                            </span>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-full">
-                        <X size={20} />
+                    <button 
+                        onClick={onClose} 
+                        className="text-zinc-500 hover:text-white transition-all duration-300 p-3 hover:bg-white/5 rounded-2xl"
+                    >
+                        <X size={22} />
                     </button>
                 </div>
 
-                <div className="flex-1 flex overflow-hidden min-h-0">
+                <div className="flex-1 flex overflow-hidden lg:flex-row flex-col min-h-0 min-w-0">
                     {/* Coluna Esquerda: Simulador Principal */}
-                    <div className="flex-1 flex flex-col p-8 items-center text-center overflow-y-auto scrollbar-hide">
+                    <div className="flex-1 flex flex-col p-10 md:p-12 items-center text-center overflow-y-auto custom-scrollbar min-w-0">
 
-
-                    {/* Console / Dialog / Feedback */}
-                    <div className="min-h-[160px] w-full max-w-lg flex flex-col items-center justify-start">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={state + (questGenerated ? '-quest' : '')}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="space-y-4 w-full"
-                            >
-                                {/* Redemption Quest Alert */}
-                                <AnimatePresence>
-                                    {questGenerated && (
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                                            exit={{ opacity: 0, scale: 0.9 }}
-                                            className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.1)] mb-2"
-                                        >
-                                            <Zap className="w-5 h-5 text-amber-500 animate-pulse" />
-                                            <div className="text-left">
-                                                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest leading-none">Falha Crítica Detectada</p>
-                                                <p className="text-[9px] text-amber-200/70 font-mono mt-1">Missão de Redenção adicionada ao Nexus.</p>
+                        {/* Console / Dialog / Feedback */}
+                        <div className="min-h-[220px] w-full max-w-2xl flex flex-col items-center justify-start">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={state + (questGenerated ? '-quest' : '')}
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 1.02 }}
+                                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                                    className="space-y-8 w-full"
+                                >
+                                    {/* AI Subtitles / Dialog - Premium Glass */}
+                                    {(state === 'hunter_speaking' || state === 'waiting_for_user' || state === 'recording_user' || state === 'finished') && [...history].reverse().find(msg => msg.role === 'hunter')?.text && (
+                                        <div className="bg-white/[0.03] backdrop-blur-md rounded-[2rem] p-8 text-left shadow-2xl relative group overflow-hidden">
+                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                            
+                                            <div className="flex items-center gap-3 mb-4 relative z-10">
+                                                <div className={`w-2 h-2 rounded-full ${state === 'hunter_speaking' ? 'bg-primary animate-pulse shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'bg-primary/30'}`} />
+                                                <span className="text-[10px] font-mono text-primary/70 uppercase tracking-[0.2em] font-bold">
+                                                    HUNTER-ZIM AGENT
+                                                </span>
                                             </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-
-                                {/* AI Subtitles / Dialog */}
-                                {(state === 'hunter_speaking' || state === 'waiting_for_user' || state === 'recording_user' || state === 'finished') && [...history].reverse().find(msg => msg.role === 'hunter')?.text && (
-                                    <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4 text-left shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className={`w-2 h-2 rounded-full ${state === 'hunter_speaking' ? 'bg-red-500 animate-pulse' : 'bg-red-500/50'}`} />
-                                            <span className="text-[10px] font-mono text-red-500/70 uppercase tracking-widest">
-                                                Hunter-Zim.exe
-                                            </span>
-                                        </div>
-                                        <p className="font-mono text-zinc-300 text-sm leading-relaxed">
-                                            "{[...history].reverse().find(msg => msg.role === 'hunter')?.text}"
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* Action Controls Instead of Text Status */}
-
-                                {/* Evaluation Feedback */}
-                                {evaluation && state !== 'evaluating' && (
-                                    <div className="border-t border-red-500/20 pt-4 mt-2">
-                                        <div className="flex items-center justify-center gap-2 mb-3">
-                                            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Última Avaliação:</span>
-                                            <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded ${evaluation.score >= 70 ? 'bg-green-500/10 text-green-500 border border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.2)]' : 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]'}`}>
-                                                {evaluation.score}/100
-                                            </span>
-                                        </div>
-                                        <div className="bg-[#050505] border border-red-500/10 rounded-lg p-3">
-                                            <p className="text-xs text-zinc-400 leading-relaxed text-left font-mono">
-                                                <span className="text-red-500/50 mr-2">/&gt;</span>
-                                                {evaluation.feedback}
+                                            <p className="font-sans text-foreground/90 text-lg leading-relaxed font-light relative z-10">
+                                                "{[...history].reverse().find(msg => msg.role === 'hunter')?.text}"
                                             </p>
                                         </div>
-                                    </div>
-                                )}
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
+                                    )}
 
-                    {/* Action Area */}
-                    <div className="pt-8 w-full max-w-lg flex items-center justify-center">
-                        <div className="flex items-center gap-6 rounded-full border border-red-500/20 bg-red-500/5 p-2 pr-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-                            {state === 'recording_user' ? (
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={stopRecording}
-                                    className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]"
-                                >
-                                    <Square size={20} className="fill-current" />
-                                    <div className="absolute -inset-2 rounded-full border border-red-500/50 animate-ping opacity-20" />
-                                </motion.button>
-                            ) : state === 'hunter_speaking' ? (
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
-                                    <div className="flex gap-1 h-6 items-end">
-                                        {[1, 2, 3, 4].map(i => (
+                                    {/* Redemption Quest Alert */}
+                                    <AnimatePresence>
+                                        {questGenerated && (
                                             <motion.div
-                                                key={i}
-                                                animate={{ height: [6, 18, 6] }}
-                                                transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.1 }}
-                                                className="w-1 bg-red-500 rounded-full"
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : state === 'evaluating' ? (
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-yellow-500/50 bg-yellow-500/10 shadow-[0_0_30px_rgba(234,179,8,0.2)]">
-                                    <Loader2 className="animate-spin text-yellow-500" size={24} />
-                                </div>
-                            ) : (
-                                <button
-                                    disabled={state === 'finished'}
-                                    onClick={startRecording}
-                                    className="flex h-14 w-14 items-center justify-center rounded-full border border-red-500/50 hover:bg-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all disabled:opacity-30 disabled:hover:bg-red-500/10 cursor-pointer"
-                                    title="Pressione para falar"
-                                >
-                                    <Mic size={24} />
-                                </button>
-                            )}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -20 }}
+                                                className="p-6 bg-amber-500/10 backdrop-blur-md rounded-2xl flex items-center gap-4 border border-amber-500/10"
+                                            >
+                                                <div className="p-3 bg-amber-500/20 rounded-xl">
+                                                    <Zap className="w-6 h-6 text-amber-500 animate-pulse" />
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="text-[11px] font-bold text-amber-500 uppercase tracking-widest leading-none mb-1">Falha Crítica Detectada</p>
+                                                    <p className="text-[13px] text-amber-200/70 font-mono">Missão de Redenção adicionada ao Nexus.</p>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
 
-                            {/* Status Text next to Icon */}
-                            <div className="flex flex-col text-left justify-center h-14">
-                                <span className={`font-mono text-xs font-bold uppercase tracking-widest ${
-                                    state === 'recording_user' ? 'text-red-500' :
-                                    state === 'hunter_speaking' ? 'text-red-400' :
-                                    state === 'evaluating' ? 'text-yellow-500' :
-                                    'text-zinc-400'
-                                }`}>
-                                    {state === 'idle' ? 'PRONTO PARA INICIAR' :
-                                     state === 'hunter_speaking' ? 'HUNTER ESTÁ FALANDO...' :
-                                     state === 'waiting_for_user' ? 'SUA VEZ DE RESPONDER' :
-                                     state === 'recording_user' ? 'GRAVANDO ÁUDIO...' :
-                                     state === 'evaluating' ? 'AVALIANDO RESPOSTA...' :
-                                     state === 'finished' ? 'SIMULAÇÃO CONCLUÍDA' : ''}
-                                </span>
-                                {(state === 'idle' || state === 'waiting_for_user') && (
-                                    <span className="font-mono text-[10px] text-zinc-500/80 uppercase">
-                                        Clique no microfone para falar
-                                    </span>
+                                    {/* Evaluation Feedback */}
+                                    {evaluation && state !== 'evaluating' && (
+                                        <div className="pt-4 flex flex-col items-center gap-6">
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-[0.3em] font-bold">Performance Matrix</span>
+                                                <div className="h-px w-12 bg-zinc-800" />
+                                                <span className={`text-lg font-bold font-mono px-4 py-1 rounded-full ${evaluation.score >= 80 ? 'text-green-400 bg-green-400/10' : 'text-primary bg-primary/10'}`}>
+                                                    {evaluation.score}/100
+                                                </span>
+                                            </div>
+                                            <div className="bg-white/[0.02] rounded-2xl p-6 w-full text-center">
+                                                <p className="text-zinc-400 leading-relaxed font-mono text-sm italic">
+                                                    "{evaluation.feedback}"
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Action Area */}
+                        <div className="mt-auto pt-12 w-full max-w-lg flex items-center justify-center">
+                            <div className="flex items-center gap-8 rounded-full bg-white/[0.03] backdrop-blur-xl p-3 pr-10 shadow-2xl group transition-all duration-500 hover:bg-white/[0.05]">
+                                {state === 'recording_user' ? (
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={stopRecording}
+                                        className="group relative flex h-20 w-20 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_30px_rgba(var(--primary),0.4)]"
+                                    >
+                                        <Square size={24} className="fill-current" />
+                                        <div className="absolute -inset-4 rounded-full border-2 border-primary/30 animate-ping" />
+                                    </motion.button>
+                                ) : state === 'hunter_speaking' ? (
+                                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 shadow-[inner_0_0_20px_rgba(var(--primary),0.1)]">
+                                        <div className="flex gap-1.5 h-8 items-center">
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                                <motion.div
+                                                    key={i}
+                                                    animate={{ 
+                                                        height: [8, 24, 8],
+                                                        opacity: [0.3, 1, 0.3]
+                                                    }}
+                                                    transition={{ 
+                                                        repeat: Infinity, 
+                                                        duration: 0.6, 
+                                                        delay: i * 0.1,
+                                                        ease: "easeInOut"
+                                                    }}
+                                                    className="w-1 bg-primary rounded-full"
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : state === 'evaluating' ? (
+                                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/10 shadow-[0_0_30px_rgba(245,158,11,0.1)]">
+                                        <Loader2 className="animate-spin text-amber-500" size={32} />
+                                    </div>
+                                ) : (
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        disabled={state === 'finished'}
+                                        onClick={startRecording}
+                                        className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-all hover:bg-primary/20 hover:shadow-[0_0_40px_rgba(var(--primary),0.3)] disabled:opacity-30 cursor-pointer group"
+                                    >
+                                        <Mic size={32} className="transition-transform duration-500 group-hover:scale-110" />
+                                    </motion.button>
                                 )}
-                                {state === 'recording_user' && (
-                                    <span className="font-mono text-[10px] text-red-500/70 uppercase">
-                                        Clique no ícone para parar
+
+                                {/* Status Text next to Icon */}
+                                <div className="flex flex-col text-left justify-center py-2">
+                                    <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.25em] mb-1 ${
+                                        state === 'recording_user' ? 'text-primary' :
+                                        state === 'hunter_speaking' ? 'text-primary/70' :
+                                        state === 'evaluating' ? 'text-amber-500' :
+                                        'text-zinc-500'
+                                    }`}>
+                                        {state === 'idle' ? 'PRONTO PARA INICIAR' :
+                                         state === 'hunter_speaking' ? 'HUNTER COGNITION ATIVA' :
+                                         state === 'waiting_for_user' ? 'SUA RESPOSTA :: AGUARDANDO' :
+                                         state === 'recording_user' ? 'CAPTURA DE ÁUDIO ATIVA' :
+                                         state === 'evaluating' ? 'ANÁLISE NEURAL EM CURSO' :
+                                         state === 'finished' ? 'AVALIAÇÃO CONCLUÍDA' : ''}
                                     </span>
-                                )}
-                                {state === 'hunter_speaking' && (
-                                    <span className="font-mono text-[10px] text-red-500/50 uppercase">
-                                        Aguarde a IA terminar
+                                    
+                                    <span className="font-sans text-[13px] text-foreground/60 tracking-tight font-medium">
+                                        {state === 'idle' || state === 'waiting_for_user' ? 'Toque no sensor para falar' :
+                                         state === 'recording_user' ? 'Toque para encerrar transmissão' :
+                                         state === 'hunter_speaking' ? 'Aguarde o processamento vocal' :
+                                         state === 'evaluating' ? 'Hamiltoniana de decisão em cálculo' :
+                                         state === 'finished' ? 'Sessão encerrada com sucesso' : ''}
                                     </span>
-                                )}
-                                {state === 'evaluating' && (
-                                    <span className="font-mono text-[10px] text-yellow-500/50 uppercase">
-                                        Aguarde o processamento
-                                    </span>
-                                )}
+                                </div>
                             </div>
                         </div>
+
+                        {error && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-8 flex items-center gap-3 text-primary bg-primary/5 px-6 py-3 rounded-2xl border border-primary/10 text-[11px] font-mono tracking-wide"
+                            >
+                                <AlertCircle size={16} />
+                                {error}
+                            </motion.div>
+                        )}
                     </div>
 
-                    {error && (
-                        <div className="flex items-center gap-2 text-red-400 bg-red-400/5 px-4 py-2 rounded-lg border border-red-400/10 text-xs font-mono">
-                            <AlertCircle size={14} />
-                            {error}
-                        </div>
-                    )}
-                    </div>
-
-                    {/* Coluna Direita: Listening Room */}
-                    <div className="w-[400px] border-l border-red-500/10 bg-black/20 flex flex-col">
+                    {/* Coluna Direita: Listening Room - Integrated */}
+                    <div className="lg:w-[450px] w-full bg-black/20 backdrop-blur-md flex flex-col shrink-0">
                         <ListeningRoom jobId={jobId} isLive={true} />
                     </div>
                 </div>
 
-                {/* Status Bar Global */}
-                <div className="border-t border-red-500/10 bg-[#050505] px-6 py-3 text-[10px] font-mono text-zinc-600 flex justify-between items-center uppercase tracking-widest shrink-0">
-                    <div className="flex gap-6">
+                {/* Status Bar Global - Subtle */}
+                <div className="px-10 py-6 text-[9px] font-mono text-zinc-600 flex justify-between items-center uppercase tracking-[0.3em] font-bold shrink-0">
+                    <div className="flex gap-8">
                         <div className="flex items-center gap-2">
-                            <Activity size={10} className="text-zinc-500" />
-                            <span>LATENCY: STABLE</span>
+                            <Activity size={12} className="text-zinc-700" />
+                            <span>NODE :: STABLE</span>
                         </div>
-                        <div className="flex items-center gap-2 text-red-500/50">
-                            <Zap size={10} className="text-red-500" />
-                            <span>SISTEMA DE MODELO DINÂMICO ATIVO</span>
+                        <div className="flex items-center gap-2 text-primary/40">
+                            <Zap size={12} className="text-primary/60" />
+                            <span>COGNITIVE ENGINE v2.0.4</span>
                         </div>
                     </div>
-                    <div className="text-zinc-500">
-                        LINK CRIPTOGRÁFICO :: {jobId.slice(0, 8)}...
+                    <div className="text-zinc-700">
+                        ID_LINK :: {jobId.slice(0, 12)}
                     </div>
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
+
 }

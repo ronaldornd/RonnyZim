@@ -109,7 +109,7 @@ export default function LockScreen({ onLogin }: { onLogin: () => void }) {
             </div>
 
             {/* Main Content */}
-            <div className="relative z-10 flex flex-col items-center gap-12 w-full max-w-sm">
+            <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-sm">
 
                 {/* Clock & Date */}
                 <div className="flex flex-col items-center gap-1">
@@ -124,7 +124,7 @@ export default function LockScreen({ onLogin }: { onLogin: () => void }) {
                     <motion.h1
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="text-7xl font-light tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-green-50 to-green-300/80"
+                        className="text-xl font-bold tracking-tight text-white/90 drop-shadow-sm"
                     >
                         {formatTime(time)}
                     </motion.h1>
@@ -132,7 +132,7 @@ export default function LockScreen({ onLogin }: { onLogin: () => void }) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.1 }}
-                        className="text-lg font-medium tracking-wide text-green-200/60 mt-2 capitalize"
+                        className="text-[10px] font-black tracking-[0.4em] text-green-500/40 mt-1 uppercase"
                     >
                         {formatDate(time)}
                     </motion.p>
@@ -147,50 +147,50 @@ export default function LockScreen({ onLogin }: { onLogin: () => void }) {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
                             onClick={() => setShowLogin(true)}
-                            className="group relative flex flex-col items-center gap-4 rounded-3xl p-6 transition-all hover:bg-green-500/5"
+                            className="group relative flex flex-col items-center gap-4 rounded-3xl p-4 transition-all hover:bg-green-500/5"
                         >
-                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#0a1a0a] to-[#020502] border border-green-500/20 shadow-2xl group-hover:border-green-400/40 group-hover:shadow-[0_0_30px_rgba(34,197,94,0.2)] transition-all">
-                                <Fingerprint className="h-8 w-8 text-green-500/50 group-hover:text-green-400 transition-colors" />
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#0a1a0a] to-[#020502] border border-green-500/20 shadow-2xl group-hover:border-green-400/40 group-hover:shadow-[0_0_30px_rgba(34,197,94,0.2)] transition-all">
+                                <Fingerprint className="h-6 w-6 text-green-500/50 group-hover:text-green-400 transition-colors" />
                             </div>
-                            <span className="text-sm font-medium tracking-widest uppercase text-green-400/70">Toque Para Desbloquear</span>
+                            <span className="text-[10px] font-medium tracking-widest uppercase text-green-400/70">Toque Para Desbloquear</span>
                         </motion.button>
                     ) : (
                         <motion.form
                             key="login-form"
                             initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
                             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                            className="w-full space-y-4 rounded-2xl bg-[#030803]/60 p-6 backdrop-blur-xl border border-green-500/20 shadow-[0_0_40px_rgba(34,197,94,0.1)]"
+                            className="w-full space-y-3 rounded-2xl bg-[#030803]/40 p-6 backdrop-blur-2xl border border-green-500/10 shadow-[0_0_50px_rgba(34,197,94,0.05)]"
                             onSubmit={isForgotPassword ? handleResetPassword : handleLogin}
                         >
-                            <div className="space-y-3">
-                                <input
-                                    type="email"
-                                    placeholder="Identidade (E-mail)"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full rounded-xl bg-green-950/20 border border-green-500/20 px-4 py-3 text-sm text-green-100 placeholder-green-600/50 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-transparent transition-all"
-                                    required
-                                />
-                                {!isForgotPassword && (
-                                    <input
-                                        type="password"
-                                        placeholder="Código de Acesso"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full rounded-xl bg-green-950/20 border border-green-500/20 px-4 py-3 text-sm text-green-100 placeholder-green-600/50 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-transparent transition-all"
-                                        required
-                                    />
-                                )}
-                            </div>
+                             <div className="space-y-3">
+                                 <input
+                                     type="email"
+                                     placeholder="IDENTIDADE (E-MAIL)"
+                                     value={email}
+                                     onChange={(e) => setEmail(e.target.value)}
+                                     className="w-full rounded-xl bg-green-950/10 border border-green-500/10 px-4 py-2.5 text-[11px] font-medium tracking-wide text-green-100 placeholder-green-800/40 focus:outline-none focus:ring-1 focus:ring-green-500/30 transition-all uppercase"
+                                     required
+                                 />
+                                 {!isForgotPassword && (
+                                     <input
+                                         type="password"
+                                         placeholder="CÓDIGO DE ACESSO"
+                                         value={password}
+                                         onChange={(e) => setPassword(e.target.value)}
+                                         className="w-full rounded-xl bg-green-950/10 border border-green-500/10 px-4 py-2.5 text-[11px] font-medium tracking-wide text-green-100 placeholder-green-800/40 focus:outline-none focus:ring-1 focus:ring-green-500/30 transition-all uppercase"
+                                         required
+                                     />
+                                 )}
+                             </div>
 
                             {error && <p className="text-xs text-green-400 text-center bg-green-500/10 p-2 rounded">{error}</p>}
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full rounded-xl bg-gradient-to-r from-green-400 to-green-500 text-black font-bold tracking-wide py-3 text-sm flex items-center justify-center gap-2 hover:from-green-300 hover:to-green-400 shadow-[0_0_15px_rgba(34,197,94,0.4)] transition-all disabled:opacity-50 disabled:shadow-none"
+                                className="w-full rounded-xl bg-green-500 text-black font-black tracking-[0.2em] py-2.5 text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-green-400 shadow-[0_4px_20px_rgba(34,197,94,0.2)] active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none"
                             >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : (isForgotPassword ? "Enviar Link de Recuperação" : (isSignUp ? "Criar Identidade" : "Autenticar"))}
+                                {loading ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : (isForgotPassword ? "RECUPERAR" : (isSignUp ? "CADASTRAR" : "AUTENTICAR"))}
                             </button>
 
                             {isForgotPassword ? (
@@ -230,9 +230,9 @@ export default function LockScreen({ onLogin }: { onLogin: () => void }) {
                                         type="button"
                                         onClick={handleGuest}
                                         disabled={loading}
-                                        className="w-full rounded-xl bg-transparent border border-green-500/30 text-green-400 font-medium py-3 text-sm hover:bg-green-500/10 transition-colors disabled:opacity-50"
+                                        className="w-full rounded-xl bg-white/[0.03] border border-green-500/10 text-green-500/60 font-black py-2.5 text-[10px] tracking-[0.2em] uppercase hover:bg-green-500/10 transition-colors disabled:opacity-50"
                                     >
-                                        Entrar como Visitante
+                                        Acesso Visitante
                                     </button>
                                 </>
                             )}

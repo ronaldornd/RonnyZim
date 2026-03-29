@@ -28,8 +28,8 @@ const interviewSchema: Schema = {
             nullable: true,
             description: "OBRIGATÓRIO se evaluation_score < 60. Um desafio técnico prático para corrigir o erro do usuário.",
             properties: {
-                title: { type: Type.STRING, description: "Título estilo RPG, ex: '[REDENÇÃO] Domínio de Hooks'" },
-                description: { type: Type.STRING, description: "Desafio prático curto para resolver a falha detectada." },
+                title: { type: Type.STRING, description: "Título agressivo estilo RPG, ex: '[REDENÇÃO] Domínio de Hooks Reativos'" },
+                description: { type: Type.STRING, description: "Dossiê técnico denso com briefing de erro e exatamente 4 passos de execução detalhados." },
                 target_stack: { type: Type.STRING, description: "Tecnologia principal (React, Node, etc)" },
                 xp_reward: { type: Type.INTEGER, description: "Sempre 100 para redenção." }
             },
@@ -84,9 +84,9 @@ export async function POST(req: Request) {
                     }
                 ],
                 config: {
-                    systemInstruction: `Você é o HunterZim, recrutador técnico da RonnyZim OS. 
+                    systemInstruction: `Você é o HunterZim, recrutador técnico implacável da RonnyZim OS. 
                     Chame o usuário pelo nome: ${userName}. 
-                    Sua missão é testar o DNA técnico. Se o ${userName} errar algo básico, dê uma nota baixa e crie uma Missão de Redenção no Knowledge Nexus via 'redemption_quest'.`,
+                    Sua missão é testar o DNA técnico. Se o ${userName} errar algo básico, dê uma nota baixa e crie uma Missão de Redenção rica em detalhes técnicos no Knowledge Nexus via 'redemption_quest'. O campo 'description' da quest deve ser um mini-dossiê com 4 passos claros.`,
                     responseMimeType: "application/json",
                     responseSchema: interviewSchema,
                 }

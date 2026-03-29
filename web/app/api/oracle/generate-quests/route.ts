@@ -33,30 +33,34 @@ export async function POST(req: Request) {
         const currentQuestsStr = currentQuests?.map(q => `- ${q.title} (${q.target_stack})`).join('\n') || 'Nenhuma quest ativa.';
 
         const prompt = `
-Contexto: RonnyZim OS - Oráculo de Mercado.
-Seu objetivo é gerar 3 Missões Diárias (Daily Quests) baseadas nas tendências detectadas.
+Contexto: RonnyZim OS - Oráculo de Estratégia Black-Ops Corporativa.
+Seu objetivo é gerar 3 Missões Diárias (Daily Quests). 
+ESTILO: Uma mistura de "Hacking de Infraestrutura" com "Estratégia Corporativa de Alto Nível".
+As missões devem ser tratadas como "Intervenções de Mercado" ou "Aquisições Técnicas Hostis".
 
-Tendências Críticas (Gaps):
+Tendências Críticas (Gaps detectados no mercado):
 ${top_trends.map((t: any) => `- ${t.skill} (Frequência: ${t.count}x)`).join('\n')}
 
-Quests Atuais (EVITE DUPLICAR):
+Quests Atuais (EVITE QUALQUER DUPLICAÇÃO):
 ${currentQuestsStr}
 
-ESTRUTURA DA MISSÃO:
-1. Título: Curto, técnico e agressivo.
-2. Briefing: 1 ou 2 parágrafos de contexto narrativo (sem passos).
-3. Passos: Exatamente 4 objetivos técnicos curtos.
-4. Critérios: Como provar a conclusão.
+DIRETRIZES DE RIQUEZA EM DETALHES (Dossiê Black-Ops):
+1. Título: Formato "[NOME DA OPERAÇÃO] Nome do Alvo". Use termos agressivos como REDENÇÃO, SENTINELA, PROTOCOLO, INFILTRAÇÃO, AQUISIÇÃO, OVERLOAD. Ex: "[PROTOCOLO HELIOS] Exploit de Performance em Micro-Ações".
+2. Briefing Tático: Mínimo de 1 parágrafo denso. Misture jargão corporativo (ROI, Stakeholders, Equity, Market Share) com jargão técnico (Low Latency, Race Conditions, Sharding, Root Cause). Explique como o cumprimento dessa missão aumenta o valor de mercado (Alpha) do operador.
+3. Objetivos de Campo (Steps): Exatamente 4 passos. Cada passo deve ser uma instrução técnica rica, descrevendo ferramentas (ex: React, Node, Redis, K8s) e métricas de sucesso (ex: REDUCE LATENCY POR 20%, ZERO-DOWNTIME). Use frases como "Implemente o middleware de interceptação utilizando X para garantir a integridade de Y".
+4. Critérios de Validação: Evidências frias (Logs de produção, links de commit, screenshots de Dashboards de Performance).
+5. Target Stack: Liste as tecnologias separadas por barra (ex: "NEXT.JS / REDIS / DOCKER / PROMETHEUS").
+6. XP Reward: Varie entre 300 e 500 baseado na complexidade.
 
-Formato de Resposta (JSON ARRAY):
+Formato de Resposta (MANDATÓRIO JSON ARRAY):
 [
   { 
     "title": "...", 
-    "briefing": "...", 
-    "steps": ["passo 1", "passo 2", "passo 3", "passo 4"],
-    "completion_criteria": "...",
-    "target_stack": "...", 
-    "xp_reward": 300 
+    "briefing": "Obrigatório: 2 parágrafos densos unindo estratégia de mercado e tática técnica para preencher o campo de visão.", 
+    "steps": ["objetivo 1: instrução técnica detalhada de 2 linhas", "objetivo 2: instrução técnica detalhada de 2 linhas", "objetivo 3: instrução técnica detalhada de 2 linhas", "objetivo 4: instrução técnica detalhada de 2 linhas (Obrigatório completar 4)"],
+    "completion_criteria": "Detalhamento técnico da evidência necessária.",
+    "target_stack": "STACK / STACK / STACK", 
+    "xp_reward": 500 
   }
 ]
 `;

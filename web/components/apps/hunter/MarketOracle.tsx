@@ -91,25 +91,27 @@ export default function MarketOracle({ userId }: MarketOracleProps) {
     }
 
     return (
-        <div className="w-full bg-black/40 border border-white/10 rounded-3xl p-6 backdrop-blur-xl mb-8 relative overflow-hidden group">
+        <div className="w-full bg-card/40 backdrop-blur-xl rounded-[2.5rem] p-10 md:p-12 relative overflow-hidden group transition-all duration-500 hover:bg-card/50 shadow-2xl">
             {/* Background Glows */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 rounded-full blur-[100px] pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[120px] pointer-events-none transition-all duration-700 group-hover:bg-primary/10" />
+            <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none transition-all duration-700 group-hover:bg-cyan-500/10" />
 
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-10 relative z-10">
                 <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="bg-red-500/10 p-2 rounded-xl border border-red-500/30">
-                            <Radar className="w-5 h-5 text-red-400" />
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.1)]">
+                            <Radar className="w-6 h-6 text-primary" />
                         </div>
-                        <h2 className="text-xl font-bold text-white tracking-tight uppercase">Oráculo de Mercado</h2>
-                        <span className="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-slate-400 font-mono tracking-widest">
-                            {totalTargets} ALVOS ATIVOS ANALISADOS
-                        </span>
+                        <div className="flex flex-col">
+                            <h2 className="text-2xl font-black text-foreground tracking-tight uppercase">Oráculo de Mercado</h2>
+                            <span className="text-[10px] font-mono tracking-[0.3em] text-zinc-500 font-bold uppercase mt-1">
+                                {totalTargets} ALVOS ATIVOS EM ANÁLISE
+                            </span>
+                        </div>
                     </div>
-                    <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
+                    <p className="text-[15px] text-zinc-400 max-w-2xl leading-relaxed font-light">
                         Detectando frequências térmicas de tecnologias com alta demanda entre seus alvos em aberto.
-                        Identifique os <span className="text-red-400 font-bold">Gaps Críticos</span> e inicie a Trilha de Redenção.
+                        Identifique os <span className="text-primary font-bold">Gaps Críticos</span> e inicie a Trilha de Redenção.
                     </p>
                 </div>
 
@@ -117,47 +119,51 @@ export default function MarketOracle({ userId }: MarketOracleProps) {
                     <button
                         onClick={generateQuests}
                         disabled={generating || trends.length === 0}
-                        className={`relative group/btn flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-300 font-mono text-sm tracking-widest uppercase overflow-hidden ${
-                            generating ? 'bg-white/5 border-white/10 text-slate-500 cursor-not-allowed' :
-                            success ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' :
-                            'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400 hover:shadow-[0_0_30px_rgba(239,68,68,0.2)]'
+                        className={`relative group/btn flex items-center gap-4 px-8 py-4 rounded-2xl border-none transition-all duration-500 font-mono text-[11px] font-bold tracking-[0.2em] uppercase overflow-hidden ${
+                            generating ? 'bg-white/5 text-zinc-600 cursor-not-allowed' :
+                            success ? 'bg-emerald-500/20 text-emerald-400' :
+                            'bg-primary/20 hover:bg-primary/30 text-primary shadow-[0_0_40px_rgba(var(--primary),0.15)] hover:shadow-[0_0_60px_rgba(var(--primary),0.25)]'
                         }`}
                     >
-                        {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : 
-                         success ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4 fill-current" />}
+                        {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : 
+                         success ? <CheckCircle2 className="w-5 h-5" /> : <Zap className="w-5 h-5 fill-current" />}
                         {generating ? 'Induzindo Missões...' : success ? 'Trilha Injetada!' : 'Gerar Trilha de Redenção'}
                         
                         {/* Interactive Shine */}
                         {!generating && !success && (
-                            <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent scale-x-0 group-hover/btn:scale-x-100 transition-transform duration-500" />
+                            <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent scale-x-0 group-hover/btn:scale-x-100 transition-transform duration-700" />
                         )}
                     </button>
                 </div>
             </div>
 
-            {/* Heatmap Trends */}
-            <div className="mt-8 flex flex-wrap gap-4">
+            {/* Heatmap Trends - Clean Chips */}
+            <div className="mt-12 flex flex-wrap gap-4">
                 <AnimatePresence>
                     {trends.map((trend, idx) => (
                         <motion.div
                             key={trend.skill}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className={`flex items-center gap-3 px-4 py-2 rounded-xl border transition-all cursor-default ${getHeatStyles(trend.heat)}`}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05, ease: "easeOut" }}
+                            className={`flex items-center gap-4 px-6 py-3 rounded-2xl border-none transition-all duration-300 font-sans ${
+                                trend.heat === 'high' ? 'bg-primary/10 text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]' :
+                                trend.heat === 'mid' ? 'bg-amber-500/10 text-amber-500' :
+                                'bg-cyan-500/10 text-cyan-500'
+                            }`}
                         >
-                            <div className="flex items-center gap-1.5 font-bold">
-                                {trend.heat === 'high' ? <Flame className="w-4 h-4" /> : 
+                            <div className="flex items-center gap-2.5 font-bold">
+                                {trend.heat === 'high' ? <Flame className="w-4 h-4 animate-pulse" /> : 
                                  trend.heat === 'mid' ? <TrendingUp className="w-4 h-4" /> : <Cpu className="w-4 h-4" />}
                                 <span className="text-sm tracking-tight">{trend.skill}</span>
                             </div>
-                            <div className="h-4 w-px bg-white/20" />
-                            <span className="text-xs font-mono font-bold">{trend.count}x</span>
+                            <div className="h-4 w-px bg-current opacity-20" />
+                            <span className="text-xs font-mono font-black tabular-nums opacity-80">{trend.count}x</span>
                         </motion.div>
                     ))}
                     
                     {trends.length === 0 && !loading && (
-                        <div className="w-full text-center py-4 border border-dashed border-white/10 rounded-2xl text-slate-500 text-xs uppercase tracking-widest bg-white/5">
+                        <div className="w-full text-center py-10 border-2 border-dashed border-white/[0.03] rounded-[2rem] text-zinc-600 text-[10px] uppercase tracking-[0.3em] font-bold bg-white/[0.01]">
                             Nenhum Gap Crítico detectado nos alvos atuais.
                         </div>
                     )}

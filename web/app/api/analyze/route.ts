@@ -34,10 +34,11 @@ const analysisSchema: Schema = {
             type: Type.OBJECT,
             properties: {
                 match_percentage: { type: Type.INTEGER, description: "Percentage of match between user skills and job requirements (0-100)." },
-                missing_skills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Skills requested by the job that the user lacks or has at a low level." },
-                strong_matches: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Skills where the user perfectly matches or exceeds the job requirements." }
+                missing_skills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Skills requested by the job that the user lacks or has at a low level. MANDATORY for density." },
+                strong_matches: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Skills where the user perfectly matches or exceeds the job requirements." },
+                risks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Tactical or career risks identified in the document (Mínimo de 3). MANDATORY for density." }
             },
-            description: "A cross-reference analysis between job requirements and user's current stack. ONLY generate this if userStacks are provided."
+            description: "A cross-reference analysis. If no job is provided, analyze gaps and risks relative to current 2026 market trends (e.g., missing AI, Cloud or specific stack expertise)."
         },
         tags: {
             type: Type.ARRAY,
@@ -121,11 +122,12 @@ export async function POST(req: Request) {
             -----------------------------------
             ` : ''}
 
-            Regras de Retorno:
-            - summary: 1-2 frases sarcásticas sobre o estado atual.
-            - score: de 0 a 100 baseada na qualidade do documento ou no fit (se Gap Analysis).
-            - action_plan: 3 a 5 passos CONCRETOS. Sem clichês.
-            - key_points: Principais extrações.
+            Regras de Retorno (DENSIDADE MÁXIMA):
+            - summary: 1-2 frases sarcásticas e ácidas sobre o estado atual.
+            - score: de 0 a 100 baseada na qualidade do documento ou no índice de poder de mercado.
+            - action_plan: 4 a 6 passos CONCRETOS e densos. SEM CLICHÊS.
+            - key_points: Principais extrações técnicas (4 a 6 itens).
+            - gap_analysis: SEMPRE PREENCHIDO. Se não houver vaga, identifique GAPS DE MERCADO (tecnologias que faltam no CV para ser elite em 2026) e RISCOS TÁTICOS (ex: "Excesso de tempo em tecnologias legadas", "Falta de portfólio público").
             - Nenhum markdown externo. Apenas o objeto JSON puro.`;
 
         const response = await ai.models.generateContent({

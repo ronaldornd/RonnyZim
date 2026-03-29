@@ -95,7 +95,7 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
 
             // [Phase 5] Auto-Tagging Trigger (Silent)
             try {
-                const { data: uploadInfo } = await supabase.storage.from('user_files').createSignedUrl(filePath, 60);
+                const { data: uploadInfo } = await supabase.storage.from('user_files').createSignedUrl(filePath, 300);
                 if (uploadInfo?.signedUrl) {
                     fetch('/api/analyze', {
                         method: 'POST',
@@ -175,16 +175,16 @@ export default function DataVault({ userId, onNavigate }: DataVaultProps) {
                 window.URL.revokeObjectURL(url);
             }
         } else if (action === 'open') {
-            // Como é um bucket privado, criar um signed url de curto tempo para visualização
-            const { data, error } = await supabase.storage.from('user_files').createSignedUrl(path, 60);
+            // Como é um bucket privado, criar um signed url de curto tempo para visualização (300s para resiliência)
+            const { data, error } = await supabase.storage.from('user_files').createSignedUrl(path, 300);
             if (data?.signedUrl) {
                 window.open(data.signedUrl, '_blank');
             }
         } else if (action === 'analyze') {
             setIsAnalyzing(true);
 
-            // Geração de Signed URL para que o Backend Next.js possa acessar o arquivo sem erro 403
-            const { data: uploadInfo, error: uploadInfoError } = await supabase.storage.from('user_files').createSignedUrl(path, 60);
+            // Geração de Signed URL para que o Backend Next.js possa acessar o arquivo sem erro 403 (300s para resiliência)
+            const { data: uploadInfo, error: uploadInfoError } = await supabase.storage.from('user_files').createSignedUrl(path, 300);
 
             if (uploadInfoError || !uploadInfo?.signedUrl) {
                 console.error("Falha ao gerar link seguro para a análise", uploadInfoError);

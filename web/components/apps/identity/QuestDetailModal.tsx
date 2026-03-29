@@ -19,13 +19,14 @@ interface QuestDetailModalProps {
     onComplete: (questId: string, xpReward: number, stackName: string) => void;
 }
 
-// Parse numbered steps from the AI description
 function parseSteps(description: string): string[] {
     if (!description) return [];
     const lines = description.split('\n').filter(l => l.trim().length > 0);
-    // If it has number-prefixed lines (1. 2. 3. etc), return as steps
-    const numbered = lines.filter(l => /^\d+[.)]\s/.test(l.trim()));
-    if (numbered.length >= 2) return numbered.map(l => l.replace(/^\d+[.)]\s*/, '').trim());
+    // Prefer explicitly numbered or bulleted lines
+    const listItems = lines.filter(l => /^(\d+[.)]|\*|-|•)\s/.test(l.trim()));
+    if (listItems.length > 0) return listItems.map(l => l.replace(/^(\d+[.)]|\*|-|•)\s*/, '').trim());
+    // Fallback: if it's short lines (not a long paragraph), treat as steps
+    if (lines.length > 1 && lines.every(l => l.length < 150)) return lines;
     return lines;
 }
 
@@ -49,22 +50,28 @@ export default function QuestDetailModal({ userId, quest, onClose, onComplete }:
     let finalSteps: string[] = [];
 
     if (hasNewFormat) {
-        // Parse New Format
-        briefing = rawDescription.match(/\[BRIEFING\]([\s\S]*?)(?=\[STEPS\]|\[CRITERIA\]|$)/)?.[1]?.trim() || '';
-        const stepsText = rawDescription.match(/\[STEPS\]([\s\S]*?)(?=\[CRITERIA\]|$)/)?.[1]?.trim() || '';
-        criteria = rawDescription.match(/\[CRITERIA\]([\s\S]*?)$/)?.[1]?.trim() || '';
+        // Parse New Format (Case Insensitive for resilience)
+        briefing = rawDescription.match(/\[BRIEFING\]([\s\S]*?)(?=\[STEPS\]|\[CRITERIA\]|$)/i)?.[1]?.trim() || '';
+        const stepsText = rawDescription.match(/\[STEPS\]([\s\S]*?)(?=\[CRITERIA\]|$)/i)?.[1]?.trim() || '';
+        criteria = rawDescription.match(/\[CRITERIA\]([\s\S]*?)$/i)?.[1]?.trim() || '';
         
         if (stepsText) {
-            finalSteps = stepsText.split('\n').filter(l => /^\d+[.)]\s/.test(l.trim())).map(l => l.replace(/^\d+[.)]\s*/, '').trim());
+            finalSteps = parseSteps(stepsText);
+        }
+
+        // If briefing is still empty but raw text exists, take the first part
+        if (!briefing && rawDescription) {
+            briefing = rawDescription.split(/\[STEPS\]|\[CRITERIA\]/i)[0].replace(/\[BRIEFING\]/i, '').trim();
         }
     } else {
         // Fallback for Legacy Format
-        briefing = rawDescription.split('[CRITERIA]')[0].trim();
-        criteria = rawDescription.split('[CRITERIA]')[1]?.trim() || '';
+        const parts = rawDescription.split(/\[CRITERIA\]/i);
+        briefing = parts[0].trim();
+        criteria = parts[1]?.trim() || '';
         finalSteps = parseSteps(briefing);
     }
 
-    const hasStepsCount = finalSteps.length >= 2;
+    const hasStepsCount = finalSteps.length > 0;
 
     const handleValidate = async () => {
         if (!proof.trim() || !quest.id) return;
@@ -158,7 +165,7 @@ export default function QuestDetailModal({ userId, quest, onClose, onComplete }:
                                             <div className="h-0.5 w-12 bg-green-500/30 rounded-full" />
                                             <span className="text-[10px] font-black text-green-500/50 uppercase tracking-[0.5em]">Transmissão Ativa</span>
                                         </div>
-                                        <h2 className={`text-2xl lg:text-3xl font-black ${isCompleted ? 'text-emerald-400' : 'text-white'} leading-tight tracking-tight`}>
+                                        <h2 className={`text-xl lg:text-2xl font-black ${isCompleted ? 'text-emerald-400' : 'text-white'} leading-tight tracking-tight`}>
                                             {quest.title}
                                         </h2>
                                     </header>
@@ -171,16 +178,16 @@ export default function QuestDetailModal({ userId, quest, onClose, onComplete }:
                                                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                                                 Briefing Tático
                                             </p>
-                                            <p className="text-lg lg:text-xl text-slate-200 leading-relaxed font-medium">
+                                            <p className="text-base text-slate-200 leading-relaxed font-medium">
                                                 {briefing || 'Aguardando transmissão de briefing...'}
                                             </p>
                                         </div>
                                     </div>
 
                                     {/* Operational Steps Grid */}
-                                    <div className="space-y-6">
+                                    <div className="space-y-6 flex flex-col overflow-hidden">
                                         <p className="text-[10px] font-black tracking-[0.4em] text-slate-500 uppercase">Objetivos de Campo</p>
-                                        <div className={`grid ${finalSteps.length > 3 ? 'md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                                        <div className={`grid ${finalSteps.length > 3 ? 'md:grid-cols-2' : 'grid-cols-1'} gap-4 overflow-y-auto pr-2 custom-scrollbar max-h-[350px]`}>
                                             {hasStepsCount ? (
                                                 finalSteps.map((step, idx) => (
                                                     <div key={idx} className="flex items-start gap-4 p-5 rounded-2xl bg-white/[0.015] border border-white/5 hover:border-white/10 hover:bg-white/[0.03] transition-all group/step shadow-sm">
@@ -190,7 +197,11 @@ export default function QuestDetailModal({ userId, quest, onClose, onComplete }:
                                                         <p className="text-sm text-slate-300 font-medium leading-relaxed pt-1">{step}</p>
                                                     </div>
                                                 ))
-                                            ) : null}
+                                            ) : (
+                                                <p className="text-xs text-slate-500 italic p-4 border border-dashed border-white/10 rounded-2xl">
+                                                    Analisando frequências... os objetivos estão sendo descriptografados.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

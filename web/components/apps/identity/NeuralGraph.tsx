@@ -251,7 +251,7 @@ function NeuralGraphInner({ stacks, quests, userName, totalLevel, userId }: Neur
     const buildGraph = useCallback(() => {
         const centerX = 400;
         const centerY = 300;
-        const radius = 200;
+        const radius = Math.min(centerX, centerY) * 0.7; // Dinâmico para caber melhor
 
         const coreNode: Node = {
             id: 'core',
@@ -340,7 +340,7 @@ function NeuralGraphInner({ stacks, quests, userName, totalLevel, userId }: Neur
     const getNextLevelXp = (level: number) => level * 100;
 
     return (
-        <div className="relative w-full h-[500px] rounded-2xl overflow-hidden border border-white/5">
+        <div className="relative w-full h-full rounded-2xl overflow-hidden border border-white/5">
             {/* Inject CSS keyframes */}
             <style>{ASTRAL_STYLES}</style>
 
@@ -376,8 +376,8 @@ function NeuralGraphInner({ stacks, quests, userName, totalLevel, userId }: Neur
                 onEdgesChange={onEdgesChange}
                 nodeTypes={nodeTypes}
                 fitView
-                fitViewOptions={{ padding: 0.3 }}
-                minZoom={0.4}
+                fitViewOptions={{ padding: 0.2 }}
+                minZoom={0.2}
                 maxZoom={2}
                 proOptions={{ hideAttribution: true }}
             >
@@ -456,9 +456,9 @@ function NeuralGraphInner({ stacks, quests, userName, totalLevel, userId }: Neur
                                 </span>
                                 <span className="text-xs font-mono text-green-400 font-bold">
                                     {getNextLevelXp(selectedSkill.stack.current_level)} XP
-                                    {selectedSkill.resonanceLabel && selectedSkill.resonanceLabel.multiplier !== 1 && (
-                                        <span className={`ml-1 ${selectedSkill.resonanceLabel.multiplier > 1 ? 'text-amber-400' : 'text-red-400'}`}>
-                                            ×{selectedSkill.resonanceLabel?.multiplier}
+                                    {selectedSkill.resonanceLabel && selectedSkill.resonanceLabel.multiplier !== undefined && selectedSkill.resonanceLabel.multiplier !== 1 && (
+                                        <span className={`ml-1 ${(selectedSkill.resonanceLabel.multiplier ?? 0) > 1 ? 'text-amber-400' : 'text-red-400'}`}>
+                                            ×{selectedSkill.resonanceLabel.multiplier}
                                         </span>
                                     )}
                                 </span>
@@ -497,7 +497,7 @@ function NeuralGraphInner({ stacks, quests, userName, totalLevel, userId }: Neur
                                     {selectedSkill.relatedQuests.map(q => (
                                         <div key={q.id} className="flex items-start gap-2 text-xs text-slate-400">
                                             <CheckCircle2 className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
-                                            <span className="leading-snug line-clamp-2">{q.title}</span>
+                                            <span className="leading-snug">{q.title}</span>
                                         </div>
                                     ))}
                                 </div>

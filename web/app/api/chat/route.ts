@@ -112,12 +112,21 @@ export async function POST(request: Request) {
             if (lastInterview && lastInterview.behavioral_analysis) {
                 userContextStr += "\n\n### ÚLTIMA ANÁLISE COMPORTAMENTAL (SENSORIAL/AUDITIVA):\n";
                 const analysis = lastInterview.behavioral_analysis as any;
+                const score = analysis.overall_confidence || 0;
                 userContextStr += `Identificada em: ${new Date(lastInterview.created_at).toLocaleDateString()}\n`;
-                userContextStr += `- Score de Confiança: ${analysis.overall_confidence || 'N/A'}/10\n`;
-                userContextStr += `- Pontos Fortes: ${analysis.strengths?.join(', ') || 'Processando'}\n`;
+                userContextStr += `- Score de Confiança REAL: ${score}/100 (Atenção: 0-40 é PÉSSIMO, 40-70 é REGULAR, 70-100 é EXCELENTE)\n`;
+                
+                if (analysis.markers && analysis.markers.length > 0) {
+                    userContextStr += "- EVENTOS DETECTADOS (Neural Events):\n";
+                    analysis.markers.slice(0, 6).forEach((m: any) => {
+                        userContextStr += `  * [${m.timestamp}s] ${m.type.toUpperCase()}: ${m.label}\n`;
+                    });
+                }
+
+                userContextStr += `- Pontos Fortes: ${analysis.strengths?.join(', ') || 'Nenhum detectado'}\n`;
                 userContextStr += `- Pontos de Atenção (Red Flags): ${analysis.red_flags?.join(', ') || 'Nenhum'}\n`;
-                userContextStr += `- Feedback Técnico: ${analysis.tone_analysis || 'N/A'}\n`;
-                userContextStr += "\nUSE ESTE CONTEXTO para dar dicas de como o usuário pode melhorar a fala, reduzir hesitações ou ser mais assertivo em entrevistas. Não mencione o JSON, aja como se estivesse ouvindo a gravação.\n";
+                userContextStr += `- Resumo Tático: ${analysis.summary || 'N/A'}\n`;
+                userContextStr += `\nINSTRUÇÃO CRÍTICA: Se o Score de Confiança for baixo (abaixo de 50), você DEVE ser crítico e apontar as falhas detectadas nos eventos acima (hesitações, pausas, gagueira). NÃO dê parabéns se a performance foi ruim. Aja como um mentor exigente.\n`;
             }
         } catch (ctxErr) {
             console.error('Falha ao buscar user context:', ctxErr);
@@ -184,7 +193,7 @@ User's Latest Message: "${lastMessage}"
             systemInstruction += "\n\nCRITICAL SYSTEM RULE: If you need specific personal/professional facts about the user to give a highly accurate answer, DO NOT guess or give generic advice. Call the declare_knowledge_gap tool instead. NEVER output raw JSON in the text message if you should be calling this tool.";
             systemInstruction += "\n\nCRITICAL SYSTEM RULE: If the user asks for a study plan, a challenge, or a quest, DO NOT just list it in text. Call the create_daily_quest tool to formally assign statistical XP progression to their Matrix. Considere o estado de energia do usuário (ASTRODASH ENERGY) para calibrar a dificuldade e recompensas.";
             systemInstruction += "\n\nCRITICAL SYSTEM RULE: Always respond using Markdown formatting (bold, italics, lists, headers) to make your output clear and professional. NEVER respond with raw JSON objects in the final message content.";
-            systemInstruction += "\n\nCRITICAL SYSTEM RULE: The 'description' field of create_daily_quest MUST contain a clear execution guide with at least 4 numbered steps so the user knows exactly how to complete the quest.";
+            systemInstruction += "\n\nCRITICAL SYSTEM RULE: The 'description' field of create_daily_quest MUST be an immersive 'Technical Dossier'. It MUST start with a [NOME DA OPERAÇÃO] in the title, followed by a dense briefing and EXACTLY 4 highly detailed technical steps (numbered 1 to 4). Each step must describe a complex action and specifying relevant tools/technologies. DO NOT provide short or generic steps.";
             systemInstruction += "\n\nCRITICAL SYSTEM RULE [CONTEXT AWARE]: Se o usuário possui missões ativas listadas acima, encoraje-o a completá-las antes de sugerir novas missões. NÃO crie missões ou desafios aleatoriamente se o usuário apenas disser 'olá' ou mensagens curtas. Nesse caso, faça um breve resumo motivacional do estado atual (missões ativas, vagas em andamento, energia) e direcione o foco dele SEM chamar a tool create_daily_quest.";
         }
 
