@@ -20,33 +20,32 @@ const analysisSchema: Schema = {
         },
         key_points: {
             type: Type.ARRAY,
-            items: {
-                type: Type.STRING
-            },
-            description: "An array of 3-5 key data points, strengths, or weaknesses found.",
+            items: { type: Type.STRING },
+            description: "An array of EXACTLY 6 surgical technical data points, strengths, or weaknesses found. No fluff.",
         },
         action_plan: {
             type: Type.ARRAY,
             items: { type: Type.STRING },
-            description: "A list of 3 to 5 concrete, numbered tactical action steps the user must take to improve or succeed. Each step must be a direct, actionable sentence (e.g., 'Adicione métricas quantificáveis ao cargo de Tech Lead, como: reduzi tempo de deploy em 40%.'). No vague advice.",
+            description: "A list of EXACTLY 6 concrete, numbered tactical action steps. Each step must be a direct, actionable technical sentence (e.g., 'Refatore o middleware de cache utilizando Redis Pub/Sub para lidar com race conditions'). No vague advice.",
         },
         gap_analysis: {
             type: Type.OBJECT,
             properties: {
-                match_percentage: { type: Type.INTEGER, description: "Percentage of match between user skills and job requirements (0-100)." },
-                missing_skills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Skills requested by the job that the user lacks or has at a low level. MANDATORY for density." },
-                strong_matches: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Skills where the user perfectly matches or exceeds the job requirements." },
-                risks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Tactical or career risks identified in the document (Mínimo de 3). MANDATORY for density." }
+                match_percentage: { type: Type.INTEGER, description: "Match percentage (0-100)." },
+                missing_skills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "EXACTLY 6 skills based on job or market gaps (AI, Cloud, 2026 trends). MANDATORY for density." },
+                strong_matches: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Top matching tech stacks." },
+                risks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "EXACTLY 6 tactical/career risks identified. MANDATORY for density." }
             },
-            description: "A cross-reference analysis. If no job is provided, analyze gaps and risks relative to current 2026 market trends (e.g., missing AI, Cloud or specific stack expertise)."
+            required: ["missing_skills", "risks"],
+            description: "Market intelligence crossing. If no job, identify 6 gaps and 6 risks relative to current 2026 market elite trends."
         },
         tags: {
             type: Type.ARRAY,
             items: { type: Type.STRING },
-            description: "An array of 3-5 technical or category tags for document organization (e.g., 'React', 'CV', 'Financial', 'API')."
+            description: "3-5 technical tags."
         }
     },
-    required: ["score", "summary", "key_points", "action_plan"],
+    required: ["score", "summary", "key_points", "action_plan", "gap_analysis"],
 };
 
 export async function POST(req: Request) {
@@ -122,12 +121,12 @@ export async function POST(req: Request) {
             -----------------------------------
             ` : ''}
 
-            Regras de Retorno (DENSIDADE MÁXIMA):
-            - summary: 1-2 frases sarcásticas e ácidas sobre o estado atual.
-            - score: de 0 a 100 baseada na qualidade do documento ou no índice de poder de mercado.
-            - action_plan: 4 a 6 passos CONCRETOS e densos. SEM CLICHÊS.
-            - key_points: Principais extrações técnicas (4 a 6 itens).
-            - gap_analysis: SEMPRE PREENCHIDO. Se não houver vaga, identifique GAPS DE MERCADO (tecnologias que faltam no CV para ser elite em 2026) e RISCOS TÁTICOS (ex: "Excesso de tempo em tecnologias legadas", "Falta de portfólio público").
+            Regras de Retorno (RIGOR TOTAL - DENSIDADE DE 6 ITENS):
+            - summary: 1-2 frases sarcásticas, ácidas e cirúrgicas sobre o estado técnico do arquivo.
+            - score: de 0 a 100 baseado na soberania técnica.
+            - action_plan: EXATAMENTE 6 PASSOS técnicos ultra-específicos. Nada de enchimento de linguiça.
+            - key_points: EXATAMENTE 6 PONTOS táticos (forças/vulnerabilidades extraídas).
+            - gap_analysis: Os campos 'missing_skills' e 'risks' DEVEM conter EXATAMENTE 6 itens cada. Se for um currículo solo, projete os gaps em relação ao topo do mercado de 2026 (IA, Agentic Systems, Rust, etc).
             - Nenhum markdown externo. Apenas o objeto JSON puro.`;
 
         const response = await ai.models.generateContent({

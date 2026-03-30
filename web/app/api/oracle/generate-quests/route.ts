@@ -46,8 +46,8 @@ ${currentQuestsStr}
 
 DIRETRIZES DE RIQUEZA EM DETALHES (Dossiê Black-Ops):
 1. Título: Formato "[NOME DA OPERAÇÃO] Nome do Alvo". Use termos agressivos como REDENÇÃO, SENTINELA, PROTOCOLO, INFILTRAÇÃO, AQUISIÇÃO, OVERLOAD. Ex: "[PROTOCOLO HELIOS] Exploit de Performance em Micro-Ações".
-2. Briefing Tático: Mínimo de 1 parágrafo denso. Misture jargão corporativo (ROI, Stakeholders, Equity, Market Share) com jargão técnico (Low Latency, Race Conditions, Sharding, Root Cause). Explique como o cumprimento dessa missão aumenta o valor de mercado (Alpha) do operador.
-3. Objetivos de Campo (Steps): Exatamente 4 passos. Cada passo deve ser uma instrução técnica rica, descrevendo ferramentas (ex: React, Node, Redis, K8s) e métricas de sucesso (ex: REDUCE LATENCY POR 20%, ZERO-DOWNTIME). Use frases como "Implemente o middleware de interceptação utilizando X para garantir a integridade de Y".
+2. Briefing Tático: Exatamente 2 parágrafos densos. Misture jargão corporativo (ROI, Stakeholders, Equity, Market Share) com jargão técnico (Low Latency, Race Conditions, Sharding, Root Cause). Explique como o cumprimento dessa missão aumenta o valor de mercado (Alpha) do operador.
+3. Objetivos de Campo (Steps): EXATAMENTE 6 passos. Cada passo deve ser uma instrução técnica rica, descrevendo ferramentas (ex: React, Node, Redis, K8s) e métricas de sucesso (ex: REDUCE LATENCY POR 20%, ZERO-DOWNTIME). Use frases como "Implemente o middleware de interceptação utilizando X para garantir a integridade de Y".
 4. Critérios de Validação: Evidências frias (Logs de produção, links de commit, screenshots de Dashboards de Performance).
 5. Target Stack: Liste as tecnologias separadas por barra (ex: "NEXT.JS / REDIS / DOCKER / PROMETHEUS").
 6. XP Reward: Varie entre 300 e 500 baseado na complexidade.
@@ -57,7 +57,7 @@ Formato de Resposta (MANDATÓRIO JSON ARRAY):
   { 
     "title": "...", 
     "briefing": "Obrigatório: 2 parágrafos densos unindo estratégia de mercado e tática técnica para preencher o campo de visão.", 
-    "steps": ["objetivo 1: instrução técnica detalhada de 2 linhas", "objetivo 2: instrução técnica detalhada de 2 linhas", "objetivo 3: instrução técnica detalhada de 2 linhas", "objetivo 4: instrução técnica detalhada de 2 linhas (Obrigatório completar 4)"],
+    "steps": ["Step 1: instrução técnica detalhada", "Step 2: instrução técnica detalhada", "Step 3: instrução técnica detalhada", "Step 4: instrução técnica detalhada", "Step 5: instrução técnica detalhada", "Step 6: instrução técnica detalhada (OBRIGATÓRIO PREENCHER 6 ITENS)"],
     "completion_criteria": "Detalhamento técnico da evidência necessária.",
     "target_stack": "STACK / STACK / STACK", 
     "xp_reward": 500 

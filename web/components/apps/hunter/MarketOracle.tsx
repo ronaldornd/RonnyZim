@@ -91,43 +91,36 @@ export default function MarketOracle({ userId }: MarketOracleProps) {
     }
 
     return (
-        <div className="w-full bg-card/40 backdrop-blur-xl rounded-[2.5rem] p-10 md:p-12 relative overflow-hidden group transition-all duration-500 hover:bg-card/50 shadow-2xl">
+        <div className="w-full h-full bg-card/40 backdrop-blur-xl rounded-[1.5rem] p-4 relative overflow-hidden group transition-all duration-500 hover:bg-card/50 shadow-2xl flex flex-col">
             {/* Background Glows */}
             <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[120px] pointer-events-none transition-all duration-700 group-hover:bg-primary/10" />
             <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none transition-all duration-700 group-hover:bg-cyan-500/10" />
 
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-10 relative z-10">
-                <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.1)]">
-                            <Radar className="w-6 h-6 text-primary" />
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-4 relative z-10 shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-2 rounded-xl border border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.05)]">
+                            <Radar className="w-5 h-5 text-primary" />
                         </div>
                         <div className="flex flex-col">
-                            <h2 className="text-2xl font-black text-foreground tracking-tight uppercase">Oráculo de Mercado</h2>
-                            <span className="text-[10px] font-mono tracking-[0.3em] text-zinc-500 font-bold uppercase mt-1">
+                            <span className="text-[10px] font-mono tracking-[0.3em] text-zinc-500 font-bold uppercase">
                                 {totalTargets} ALVOS ATIVOS EM ANÁLISE
                             </span>
                         </div>
                     </div>
-                    <p className="text-[15px] text-zinc-400 max-w-2xl leading-relaxed font-light">
-                        Detectando frequências térmicas de tecnologias com alta demanda entre seus alvos em aberto.
-                        Identifique os <span className="text-primary font-bold">Gaps Críticos</span> e inicie a Trilha de Redenção.
-                    </p>
-                </div>
 
                 <div className="flex-shrink-0">
                     <button
                         onClick={generateQuests}
                         disabled={generating || trends.length === 0}
-                        className={`relative group/btn flex items-center gap-4 px-8 py-4 rounded-2xl border-none transition-all duration-500 font-mono text-[11px] font-bold tracking-[0.2em] uppercase overflow-hidden ${
+                        className={`relative group/btn flex items-center gap-3 px-6 py-3 rounded-xl border-none transition-all duration-500 font-mono text-[9px] font-bold tracking-[0.2em] uppercase overflow-hidden ${
                             generating ? 'bg-white/5 text-zinc-600 cursor-not-allowed' :
                             success ? 'bg-emerald-500/20 text-emerald-400' :
-                            'bg-primary/20 hover:bg-primary/30 text-primary shadow-[0_0_40px_rgba(var(--primary),0.15)] hover:shadow-[0_0_60px_rgba(var(--primary),0.25)]'
+                            'bg-primary/20 hover:bg-primary/30 text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]'
                         }`}
                     >
-                        {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : 
-                         success ? <CheckCircle2 className="w-5 h-5" /> : <Zap className="w-5 h-5 fill-current" />}
-                        {generating ? 'Induzindo Missões...' : success ? 'Trilha Injetada!' : 'Gerar Trilha de Redenção'}
+                        {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : 
+                         success ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4 fill-current" />}
+                        {generating ? 'Induzindo...' : success ? 'Sucesso!' : 'Gerar Trilha'}
                         
                         {/* Interactive Shine */}
                         {!generating && !success && (
@@ -137,8 +130,8 @@ export default function MarketOracle({ userId }: MarketOracleProps) {
                 </div>
             </div>
 
-            {/* Heatmap Trends - Clean Chips */}
-            <div className="mt-12 flex flex-wrap gap-4">
+            {/* Heatmap Trends - Clean Chips (Scrollable Area) */}
+            <div className="mt-3 flex flex-wrap gap-2 overflow-y-auto pr-1 custom-scrollbar flex-1 content-start">
                 <AnimatePresence>
                     {trends.map((trend, idx) => (
                         <motion.div
@@ -146,7 +139,7 @@ export default function MarketOracle({ userId }: MarketOracleProps) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.05, ease: "easeOut" }}
-                            className={`flex items-center gap-4 px-6 py-3 rounded-2xl border-none transition-all duration-300 font-sans ${
+                            className={`flex items-center gap-3 px-4 py-2 rounded-xl border-none transition-all duration-300 font-sans h-fit ${
                                 trend.heat === 'high' ? 'bg-primary/10 text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)]' :
                                 trend.heat === 'mid' ? 'bg-amber-500/10 text-amber-500' :
                                 'bg-cyan-500/10 text-cyan-500'
