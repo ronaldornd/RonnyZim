@@ -1,4 +1,14 @@
 {
+  "name": "ronnyzim-os-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix web",
+    "mcp:build": "npm run build --prefix mcp-servers",
+    "mcp:watch": "npm run watch --prefix mcp-servers",
+    "memory:start": "npm run memory:start --prefix mcp-servers",
+    "market:start": "npm run market:start --prefix mcp-servers"
+  },
   "dependencies": {
     "axios": "^1.13.5"
   }

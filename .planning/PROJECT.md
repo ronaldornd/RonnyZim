@@ -17,9 +17,15 @@ O backend do RonnyZim OS é projetado para ser "Invisible & Intelligent". Ele at
 3.  **Intelligence Bridge**: Servidores MCP operando como guardiões de memória e rastreadores de mercado.
 
 ## Requisitos de Sucesso (KPIs)
-- **Latência de Auth**: < 200ms para login/refresh.
+- **Latência de Auth**: < 200ms para login/refresh (Target).
 - **Integridade de Dados**: 100% de cobertura RLS para tabelas privadas.
-- **Consistência de IA**: Feedback do Oráculo baseado em `user_facts` com zero alucinação sobre o perfil do usuário.
+- **Consistência de IA**: Feedback do Oráculo baseado em `user_facts` via MCP.
+
+### Requisitos Validados ✅
+- **FR-1**: Autenticação SSR via Supabase (Fase 1).
+- **FR-2**: LockScreen integrada e sessões persistentes (Fase 1).
+- **FR-3**: Intelligence Bridge (Market Intelligence) via Tavily (Fase 2).
+- **FR-4**: Memory Guardian (Memory Management) via MCP (Fase 2).
 
 ---
-*Last updated: 2026-03-30 after Architecture Approval*
+*Last updated: 2026-04-01 after Phase 2 Milestone*
