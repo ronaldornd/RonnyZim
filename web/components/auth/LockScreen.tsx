@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createClient } from '@/lib/supabase/browser';
+import { createClient } from '@/lib/supabase/client';
 import { Lock, Fingerprint, Loader2 } from 'lucide-react';
 
 export default function LockScreen({ onLogin }: { onLogin: () => void }) {

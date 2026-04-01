@@ -214,34 +214,42 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
     const ThemeGlow = activeTab === 'Targets' ? 'from-transparent to-red-500' : 'from-transparent to-cyan-500';
 
     return (
-        <div className={`w-full h-screen bg-[#050505] flex flex-col text-slate-200 overflow-hidden font-sans border ${activeTab === 'Targets' ? 'border-red-500/20' : 'border-cyan-500/20'} relative transition-colors duration-500`}>
+        <section 
+            id="hunter-board"
+            aria-labelledby="hunter-title"
+            className={`w-full h-screen bg-[#050505] flex flex-col text-slate-200 overflow-hidden font-sans border ${activeTab === 'Targets' ? 'border-red-500/20' : 'border-cyan-500/20'} relative transition-colors duration-500`}
+        >
 
             {/* Dynamic Inner Glow */}
-            <div className={`absolute inset-0 pointer-events-none opacity-10 bg-gradient-to-t ${ThemeGlow} transition-all duration-1000 ease-in-out`}></div>
+            <div className={`absolute inset-0 pointer-events-none opacity-10 bg-gradient-to-t ${ThemeGlow} transition-all duration-1000 ease-in-out`} aria-hidden="true"></div>
 
             <header className={`h-20 border-b ${activeTab === 'Targets' ? 'border-red-500/20' : 'border-cyan-500/20'} px-8 flex items-center justify-between bg-black/40 backdrop-blur-md relative z-10 shrink-0`}>
                 <div className="flex items-center gap-4">
                     <div className={`p-2.5 rounded-xl border transition-colors duration-500 ${activeTab === 'Targets' ? 'bg-red-500/10 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]' : 'bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'}`}>
-                        {activeTab === 'Targets' ? <Target className="h-6 w-6 text-red-400" /> : <BrainCircuit className="h-6 w-6 text-cyan-400" />}
+                        {activeTab === 'Targets' ? <Target className="h-6 w-6 text-red-400" aria-hidden="true" /> : <BrainCircuit className="h-6 w-6 text-cyan-400" aria-hidden="true" />}
                     </div>
                     <div className="flex flex-col items-start justify-center">
-                        <h1 className={`text-2xl font-bold tracking-tight leading-none transition-colors duration-500 ${activeTab === 'Targets' ? 'text-red-400' : 'text-cyan-400'}`}>Mural do Caçador</h1>
+                        <h2 id="hunter-title" className={`text-2xl font-bold tracking-tight leading-none transition-colors duration-500 ${activeTab === 'Targets' ? 'text-red-400' : 'text-cyan-400'}`}>
+                            Mural do Caçador
+                        </h2>
 
                         {/* Tabs de Navegação */}
-                        <div className="flex items-center gap-4 mt-2">
+                        <nav className="flex items-center gap-4 mt-2" aria-label="Abas do Mural">
                             <button
                                 onClick={() => setActiveTab('Targets')}
+                                aria-current={activeTab === 'Targets' ? 'page' : undefined}
                                 className={`text-xs uppercase tracking-widest font-bold py-1 px-2 rounded-md transition-all ${activeTab === 'Targets' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'text-slate-500 hover:text-slate-300'}`}
                             >
                                 Alvos Adquiridos
                             </button>
                             <button
                                 onClick={() => setActiveTab('Profile')}
+                                aria-current={activeTab === 'Profile' ? 'page' : undefined}
                                 className={`text-xs uppercase tracking-widest font-bold py-1 px-2 rounded-md transition-all ${activeTab === 'Profile' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'}`}
                             >
                                 Painel de Currículos
                             </button>
-                        </div>
+                        </nav>
                     </div>
                 </div>
             </header>
@@ -626,7 +634,7 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                 </AnimatePresence>
 
             </main>
-        </div>
+        </section>
     );
 }
 
@@ -644,20 +652,21 @@ function JobCard({
     onStartInterview 
 }: any) {
     return (
-        <motion.div
+        <motion.article
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
+            aria-labelledby={`job-title-${insight.id}`}
             className="flex flex-col rounded-xl bg-white/[0.03] backdrop-blur-xl hover:bg-white/[0.07] transition-all duration-500 group/card relative overflow-hidden active:scale-[0.99]"
         >
             {/* Subtle Inner Glow on Hover */}
-            <div className="absolute inset-0 bg-red-500/0 group-hover/card:bg-red-500/[0.02] transition-colors duration-700 pointer-events-none" />
+            <div className="absolute inset-0 bg-red-500/0 group-hover/card:bg-red-500/[0.02] transition-colors duration-700 pointer-events-none" aria-hidden="true" />
             
             <div 
                 onClick={() => onSelect(insight)}
                 className="p-4 pb-2 flex items-start justify-between cursor-pointer relative z-10"
             >
                 <div className="pr-6 space-y-1">
-                    <h3 className="text-lg font-bold text-white tracking-tight group-hover/card:text-red-400 transition-colors duration-300" title={insight.document_name}>
+                    <h3 id={`job-title-${insight.id}`} className="text-lg font-bold text-white tracking-tight group-hover/card:text-red-400 transition-colors duration-300" title={insight.document_name}>
                         {insight.document_name}
                     </h3>
                     <p className="text-[9px] text-zinc-500 font-mono flex items-center gap-2 opacity-60">
@@ -721,7 +730,7 @@ function JobCard({
                     <span className="text-[9px] font-black font-mono uppercase tracking-[0.3em]">Iniciar Simulação</span>
                 </button>
             </div>
-        </motion.div>
+        </motion.article>
     );
 }
 

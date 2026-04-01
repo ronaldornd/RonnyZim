@@ -133,37 +133,53 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
     ];
 
     return (
-        <div className="w-full h-screen bg-[#050505] flex flex-col relative overflow-hidden font-sans">
+        <section 
+            aria-labelledby="dossier-title"
+            className="w-full h-screen bg-[#050505] flex flex-col relative overflow-hidden font-sans"
+        >
             {/* Glossy Header */}
             <header className="h-20 border-b border-white/5 bg-black/40 backdrop-blur-3xl px-6 flex items-center justify-between shrink-0 relative z-30">
                 <div className="flex items-center gap-6">
-                    <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-white/5 shadow-2xl ${getScoreColor(job.score)}`}>
-                        <span className="text-2xl font-black leading-none">{job.score}</span>
-                        <span className="text-[8px] uppercase font-black tracking-[0.2em] mt-1 opacity-60">Match</span>
+                    <div 
+                        className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center border border-white/5 shadow-2xl ${getScoreColor(job.score)}`}
+                        aria-label={`Score de Match: ${job.score}`}
+                    >
+                        <span className="text-2xl font-black leading-none" aria-hidden="true">{job.score}</span>
+                        <span className="text-[8px] uppercase font-black tracking-[0.2em] mt-1 opacity-60" aria-hidden="true">Match</span>
                     </div>
                     <div>
-                        <h1 className="text-xl font-black text-white tracking-tighter uppercase leading-tight max-w-xl">
+                        <h2 id="dossier-title" className="text-xl font-black text-white tracking-tighter uppercase leading-tight max-w-xl">
                             {job.document_name.replace(/\.[^/.]+$/, "")}
-                        </h1>
+                        </h2>
                         <div className="flex items-center gap-3 mt-1 font-mono text-[9px] text-zinc-500 uppercase tracking-widest">
-                            <span className="flex items-center gap-1.5"><Target size={12} className="text-red-500" /> Analisado: {new Date(job.created_at).toLocaleDateString()}</span>
+                            <span className="flex items-center gap-1.5" aria-label={`Data de análise: ${new Date(job.created_at).toLocaleDateString()}`}>
+                                <Target size={12} className="text-red-500" aria-hidden="true" /> Analisado: {new Date(job.created_at).toLocaleDateString()}
+                            </span>
                             <span className="bg-white/5 px-2 py-0.5 rounded text-zinc-400 border border-white/5">Vault ID: {job.id.split('-')[0]}</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button onClick={() => openDocument(job.document_name)} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all active:scale-95 shadow-lg border border-white/5">
-                        <ExternalLink size={16} />
+                    <button 
+                        onClick={() => openDocument(job.document_name)} 
+                        aria-label="Abrir Documento Original"
+                        className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all active:scale-95 shadow-lg border border-white/5"
+                    >
+                        <ExternalLink size={16} aria-hidden="true" />
                     </button>
-                    <button onClick={onClose} className="p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all active:scale-95 shadow-lg border border-red-500/20">
-                        <X size={16} />
+                    <button 
+                        onClick={onClose} 
+                        aria-label="Fechar Dossiê"
+                        className="p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all active:scale-95 shadow-lg border border-red-500/20"
+                    >
+                        <X size={16} aria-hidden="true" />
                     </button>
                 </div>
             </header>
 
             {/* Tab Navigation Dock */}
-            <nav className="h-14 bg-white/[0.02] border-b border-white/5 flex items-center justify-center gap-2 px-4 shrink-0 z-20">
+            <nav className="h-14 bg-white/[0.02] border-b border-white/5 flex items-center justify-center gap-2 px-4 shrink-0 z-20" aria-label="Abas de Inteligência">
                 {tabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -171,11 +187,12 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
+                            aria-current={isActive ? 'page' : undefined}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-500 relative group ${
                                 isActive ? 'text-red-500 bg-red-500/5' : 'text-slate-500 hover:text-slate-300'
                             }`}
                         >
-                            <Icon size={14} className={isActive ? 'animate-pulse' : 'group-hover:scale-110 transition-transform'} />
+                            <Icon size={14} className={isActive ? 'animate-pulse' : 'group-hover:scale-110 transition-transform'} aria-hidden="true" />
                             <span className="text-[9px] font-black uppercase tracking-[0.2em]">{tab.label}</span>
                             {isActive && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />}
                         </button>
@@ -423,9 +440,9 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
             </main>
 
             {/* Micro Status Bar */}
-            <footer className="h-10 bg-black/60 border-t border-white/5 flex items-center justify-between px-6 shrink-0 z-20">
+            <footer className="h-10 bg-black/60 border-t border-white/5 flex items-center justify-between px-6 shrink-0 z-20" aria-label="Status Neural">
                 <div className="flex items-center gap-6 text-[9px] font-mono font-black text-zinc-700 uppercase tracking-[0.3em]">
-                    <span className="flex items-center gap-2"><Globe size={10} className="text-zinc-800" /> Link Neural Ativo</span>
+                    <span className="flex items-center gap-2"><Globe size={10} className="text-zinc-800" aria-hidden="true" /> Link Neural Ativo</span>
                     <span>Sinc 99%</span>
                 </div>
                 <div className="text-[8px] font-mono text-zinc-800 uppercase tracking-[0.2em]">HunterOS Modular v2.1</div>
@@ -440,6 +457,6 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
                     />
                 )}
             </AnimatePresence>
-        </div>
+        </section>
     );
 }

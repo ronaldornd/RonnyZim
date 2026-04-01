@@ -75,10 +75,11 @@ export default function DesktopShell() {
 
     // O Immersive Shell
     return (
-        <div className="h-[100dvh] w-full bg-[#050505] relative overflow-hidden overscroll-none flex flex-col">
+        <main className="h-[100dvh] w-full bg-[#050505] relative overflow-hidden overscroll-none flex flex-col">
+            <h1 className="sr-only">RonnyZim OS - {activeApp === 'workspace' ? 'Console de Inteligência' : activeApp.toUpperCase()}</h1>
 
             {/* Área do App Ativo (Full Screen) */}
-            <div className="flex-1 w-full min-h-0 relative z-0">
+            <div className="flex-1 w-full min-h-0 relative z-0" role="region" aria-live="polite">
                 <div className={activeApp === 'workspace' ? 'absolute inset-0 z-0' : 'hidden'}>
                     <AgentWorkspace userId={userId || ''} />
                 </div>
@@ -105,8 +106,11 @@ export default function DesktopShell() {
             </div>
 
             {/* Ghost Dock (Navegação Escondida) */}
-            {/* Um trigger zone transparente na parte inferior de 30px captura o hover */}
-            <div className="absolute bottom-0 w-full h-[40px] group z-50 flex justify-center items-end pb-2">
+            {/* Um trigger zone transparente na parte inferior de 40px captura o hover */}
+            <nav 
+                className="absolute bottom-0 w-full h-[40px] group z-50 flex justify-center items-end pb-2"
+                aria-label="Barra de Tarefas do OS"
+            >
 
                 {/* The Dock */}
                 <div className="
@@ -117,72 +121,79 @@ export default function DesktopShell() {
 
                     <button
                         onClick={() => setActiveApp('workspace')}
+                        aria-label="Abrir Console de IA"
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'workspace' ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-white/5'}`}
                     >
-                        <TerminalSquare className="w-6 h-6" />
+                        <TerminalSquare className="w-6 h-6" aria-hidden="true" />
                         <span className="text-[10px] font-bold tracking-widest uppercase">Console</span>
                     </button>
 
                     <button
                         onClick={() => setActiveApp('identity')}
+                        aria-label="Abrir Matrix de Identidade"
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'identity' ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-white/5'}`}
                     >
-                        <UserCircle2 className="w-6 h-6" />
+                        <UserCircle2 className="w-6 h-6" aria-hidden="true" />
                         <span className="text-[10px] font-bold tracking-widest uppercase">Identidade</span>
                     </button>
 
                     <button
                         onClick={() => setActiveApp('vault')}
+                        aria-label="Abrir Cofre de Dados"
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'vault' ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-white/5'}`}
                     >
-                        <DatabaseZap className="w-6 h-6" />
+                        <DatabaseZap className="w-6 h-6" aria-hidden="true" />
                         <span className="text-[10px] font-bold tracking-widest uppercase">Cofre</span>
                     </button>
 
                     <button
                         onClick={() => setActiveApp('hunter')}
+                        aria-label="Abrir Hunter Board (CRM)"
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'hunter' ? 'text-red-400 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'text-slate-500 hover:text-red-400 hover:bg-white/5'}`}
                     >
-                        <Target className="w-6 h-6" />
+                        <Target className="w-6 h-6" aria-hidden="true" />
                         <span className="text-[10px] font-bold tracking-widest uppercase">CRM</span>
                     </button>
 
                     <button
                         onClick={() => setActiveApp('rndmind')}
+                        aria-label="Abrir RND Mind (Dashboard Astro)"
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
                             activeApp === 'rndmind'
                                 ? 'text-violet-400 bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.2)]'
                                 : 'text-slate-500 hover:text-violet-400 hover:bg-white/5'
                         }`}
                     >
-                        <Sparkles className="w-6 h-6" />
+                        <Sparkles className="w-6 h-6" aria-hidden="true" />
                         <span className="text-[10px] font-bold tracking-widest uppercase">RND Mind</span>
                     </button>
 
-                    <div className="w-[1px] h-full bg-slate-800 mx-2"></div>
+                    <div className="w-[1px] h-full bg-slate-800 mx-2" role="separator" aria-hidden="true"></div>
 
                     <button
                         onClick={() => setActiveApp('settings')}
+                        aria-label="Configurações do Sistema"
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'settings' ? 'text-zinc-300 bg-white/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                     >
-                        <Settings2 className="w-6 h-6" />
+                        <Settings2 className="w-6 h-6" aria-hidden="true" />
                         <span className="text-[10px] font-bold tracking-widest uppercase">Config</span>
                     </button>
 
                     <button
                         onClick={handleLogout}
+                        aria-label="Encerrar Sessão"
                         className="flex flex-col items-center gap-1 p-2 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors ml-4"
                     >
-                        <Power className="w-6 h-6" />
+                        <Power className="w-6 h-6" aria-hidden="true" />
                         <span className="text-[10px] font-bold tracking-widest uppercase">Sair</span>
                     </button>
 
                 </div>
 
                 {/* Glow Line Indicator (quando a dock ta escondida, mostra uma listra que brilha no hover) */}
-                <div className="absolute bottom-0 w-1/3 h-[2px] bg-gradient-to-r from-transparent via-green-500/20 group-hover:via-green-500 to-transparent pointer-events-none transition-colors duration-500"></div>
+                <div className="absolute bottom-0 w-1/3 h-[2px] bg-gradient-to-r from-transparent via-green-500/20 group-hover:via-green-500 to-transparent pointer-events-none transition-colors duration-500" aria-hidden="true"></div>
 
-            </div>
-        </div >
+            </nav>
+        </main>
     );
 }
