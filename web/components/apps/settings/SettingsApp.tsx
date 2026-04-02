@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings2, Cpu, Save, Loader2, AlertCircle, Mic } from 'lucide-react';
 import { createClient } from '@/lib/supabase/browser';
+import { useBootSequence } from '@/lib/hooks/useBootSequence';
+import { Settings2, Cpu, Save, Loader2, AlertCircle, Mic, RefreshCw, HelpCircle } from 'lucide-react';
 
 interface ModelInfo {
     id: string;
@@ -20,6 +21,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const { resetBoot } = useBootSequence();
 
 
     useEffect(() => {
@@ -227,6 +229,27 @@ export default function SettingsApp({ userId }: { userId: string }) {
                         >
                             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                             Aplicar Configurações
+                        </button>
+                    </div>
+                </section>
+
+                <section className="bg-zinc-950 border border-blue-500/10 rounded-2xl p-6 mb-20">
+                    <div className="flex items-center gap-3 mb-4">
+                        <HelpCircle className="text-yellow-400 w-6 h-6" />
+                        <h2 className="text-xl font-semibold text-white uppercase tracking-tighter">System Lifecycle</h2>
+                    </div>
+
+                    <p className="text-sm text-zinc-400 mb-6 font-mono leading-relaxed">
+                        Execute operações de sistema críticas. Reiniciar o tutorial apagará o flag de "visto" do onboarding local.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <button
+                            onClick={resetBoot}
+                            className="bg-zinc-900 hover:bg-zinc-800 border border-white/5 text-zinc-400 px-6 py-4 rounded-xl font-mono text-xs uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 group"
+                        >
+                            <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                            Reiniciar Tutorial (Boot)
                         </button>
                     </div>
                 </section>

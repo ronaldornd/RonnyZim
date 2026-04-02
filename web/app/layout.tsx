@@ -1,3 +1,4 @@
+/** HMR_CACHE_RESET: 2026-04-01-T17:52 */
 import type { Metadata } from 'next';
 import { Fira_Code, Share_Tech_Mono } from 'next/font/google';
 import IdentitySchema from '@/components/seo/IdentitySchema';
