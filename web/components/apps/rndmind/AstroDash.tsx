@@ -166,7 +166,7 @@ export default function AstroDash() {
                         user_id: userId,
                         category: 'astrology',
                         property_key: 'astro_technical_focus',
-                        value: JSON.stringify(json.technical_affinity)
+                        value: JSON.stringify(data.technical_affinity)
                     });
                 }
 
