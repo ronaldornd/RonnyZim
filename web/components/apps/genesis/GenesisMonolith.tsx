@@ -177,81 +177,83 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                        {/* Sec. 1: Bio-Data */}
-                        <div className="col-span-1 md:col-span-1 border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-green-500/30 transition-colors">
-                            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><Fingerprint className="w-24 h-24" /></div>
-                            <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
-                                <UserCircle2 className="w-4 h-4 text-green-400" /> Dados Biológicos
-                            </h2>
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Nome Completo</label>
-                                    <input required type="text" value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" placeholder="Ronaldo..." />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
+                        
+                        {/* Coluna 1 (1/3) - Bio e Logística */}
+                        <div className="md:col-span-1 space-y-4">
+                            {/* Sec. 1: Bio-Data */}
+                            <div className="border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-green-500/30 transition-colors">
+                                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><Fingerprint className="w-24 h-24" /></div>
+                                <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
+                                    <UserCircle2 className="w-4 h-4 text-green-400" /> Dados Biológicos
+                                </h2>
+                                <div className="space-y-3">
                                     <div>
-                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-green-400" /> Data Natal</label>
-                                        <input required type="date" value={(formData.birthDateTime || '').split('T')[0]} onChange={(e) => handleInputChange('birthDateTime', `${e.target.value}T${(formData.birthDateTime || '').split('T')[1] || '00:00'}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" />
+                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Nome Completo</label>
+                                        <input required type="text" value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" placeholder="Ronaldo..." />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-green-400" /> Data Natal</label>
+                                            <input required type="date" value={(formData.birthDateTime || '').split('T')[0]} onChange={(e) => handleInputChange('birthDateTime', `${e.target.value}T${(formData.birthDateTime || '').split('T')[1] || '00:00'}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-teal-400" /> Hora Natal</label>
+                                            <input type="time" value={(formData.birthDateTime || '').split('T')[1] || ''} onChange={(e) => handleInputChange('birthDateTime', `${(formData.birthDateTime || '').split('T')[0]}T${e.target.value}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: 14:30" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-teal-400" /> Hora Natal</label>
-                                        <input type="time" value={(formData.birthDateTime || '').split('T')[1] || ''} onChange={(e) => handleInputChange('birthDateTime', `${(formData.birthDateTime || '').split('T')[0]}T${e.target.value}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: 14:30" />
+                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Globe2 className="w-3 h-3 text-teal-400" /> Cidade Natal</label>
+                                        <input required type="text" value={formData.birthCity} onChange={(e) => handleInputChange('birthCity', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: São Paulo, SP, Brasil" />
                                     </div>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Globe2 className="w-3 h-3 text-teal-400" /> Cidade Natal</label>
-                                    <input required type="text" value={formData.birthCity} onChange={(e) => handleInputChange('birthCity', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: São Paulo, SP, Brasil" />
                                 </div>
                             </div>
-
-                        </div>
-
-                        {/* Sec. 2 & 3: Logistics + Tech Profile */}
-                        <div className="col-span-1 md:col-span-2 space-y-4">
 
                             {/* Sec. 2: Logistics */}
                             <div className="border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-blue-500/30 transition-colors">
                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><MapPin className="w-24 h-24" /></div>
                                 <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
-                                    <MapPin className="w-4 h-4 text-blue-400" /> Logística Pessoal (Alvo p/ HunterZim)
+                                    <MapPin className="w-4 h-4 text-blue-400" /> Logística Pessoal
                                 </h2>
                                 <div>
                                     <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Localização Atual</label>
-                                    <input required type="text" value={formData.currentLocation} onChange={(e) => handleInputChange('currentLocation', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm" placeholder="Sua cidade atual e limitações de deslocamento..." />
+                                    <input required type="text" value={formData.currentLocation} onChange={(e) => handleInputChange('currentLocation', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm" placeholder="Sua cidade e mobilidade..." />
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Sec. 3: Tech Profile */}
-                            <div className="border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-amber-500/30 transition-colors">
+                        {/* Coluna 2 (2/3) - Perfil Técnico */}
+                        <div className="md:col-span-2">
+                            <div className="h-full border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-amber-500/30 transition-colors">
                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><Cpu className="w-24 h-24" /></div>
                                 <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
                                     <TerminalSquare className="w-4 h-4 text-amber-400" /> Perfil Técnico
                                 </h2>
-                                <div className="md:col-span-2">
-                                    <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Main Stacks (Mastery RPG)</label>
-                                    <div className="w-full">
-                                        <StackSelector
-                                            selectedStacks={formData.mainStacks}
-                                            onChange={(stacks) => handleInputChange('mainStacks', stacks as any)}
-                                            disabled={isSubmitting}
-                                        />
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Main Stacks (Mastery RPG)</label>
+                                        <div className="w-full">
+                                            <StackSelector
+                                                selectedStacks={formData.mainStacks}
+                                                onChange={(stacks) => handleInputChange('mainStacks', stacks as any)}
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="md:col-span-2 mt-3">
-                                    <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Briefcase className="w-3 h-3 text-amber-400" /> Senioridade Atual</label>
-                                    <select
-                                        value={formData.seniority}
-                                        onChange={(e) => handleInputChange('seniority', e.target.value)}
-                                        disabled={isSubmitting}
-                                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all text-sm appearance-none"
-                                    >
-                                        <option value="Junior">Junior</option>
-                                        <option value="Pleno">Pleno</option>
-                                        <option value="Senior">Senior</option>
-                                        <option value="Tech Lead">Tech Lead</option>
-                                        <option value="Staff/Principal">Staff / Principal / Arquitetura</option>
-                                    </select>
+                                    <div className="mt-3">
+                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Briefcase className="w-3 h-3 text-amber-400" /> Senioridade Atual</label>
+                                        <select
+                                            value={formData.seniority}
+                                            onChange={(e) => handleInputChange('seniority', e.target.value)}
+                                            disabled={isSubmitting}
+                                            className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all text-sm appearance-none"
+                                        >
+                                            <option value="Junior">Junior</option>
+                                            <option value="Pleno">Pleno</option>
+                                            <option value="Senior">Senior</option>
+                                            <option value="Tech Lead">Tech Lead</option>
+                                            <option value="Staff/Principal">Staff / Principal / Arquitetura</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
