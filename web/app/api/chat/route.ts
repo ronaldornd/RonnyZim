@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 import { declareKnowledgeGapFunctionDeclaration, createDailyQuestFunctionDeclaration } from '@/lib/active-learning/tools';
-import { createAdminClient } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 

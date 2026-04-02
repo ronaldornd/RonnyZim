@@ -1,5 +1,5 @@
 import { Type } from '@google/genai';
-import { createAdminClient } from '../supabase/client';
+import { createAdminClient } from '../supabase/admin';
 
 export const declareKnowledgeGapFunctionDeclaration = {
     name: 'declare_knowledge_gap',

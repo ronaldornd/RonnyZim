@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI, Type, Schema } from '@google/genai';
-import { createAdminClient } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // Initialize the Google Gen AI client explicitly forcing GEMINI_API_KEY
 // to prevent collisions with GOOGLE_API_KEY which might expect OAuth.
