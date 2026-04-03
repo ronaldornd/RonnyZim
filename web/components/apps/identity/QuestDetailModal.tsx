@@ -10,13 +10,16 @@ interface Quest {
     target_stack: string;
     status: string;
     completed: boolean;
+    type?: string;
+    stack_name?: string;
+    stack_id?: string;
 }
 
 interface QuestDetailModalProps {
     userId: string;
     quest: Quest | null;
     onClose: () => void;
-    onComplete: (questId: string, xpReward: number, stackName: string) => void;
+    onComplete: (questId: string, xpReward: number, stackName: string, stackId: string) => void;
 }
 
 function parseSteps(description: string): string[] {
@@ -99,7 +102,7 @@ export default function QuestDetailModal({ userId, quest, onClose, onComplete }:
                 setCompletedLocally(true);
                 // Trigger global update in parent after a short delay to show feedback
                 setTimeout(() => {
-                    onComplete(quest.id, quest.xp_reward, quest.target_stack);
+                    onComplete(quest.id, quest.xp_reward, quest.stack_name || quest.target_stack, quest.stack_id || '');
                 }, 2000);
             } else {
                 setError(data.feedback || 'Validação recusada pela IA.');

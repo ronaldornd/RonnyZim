@@ -7,26 +7,24 @@ Plano de fases para a construção da infraestrutura inteligente.
 - ✅ **v1.0 Fundação** — Phase 1 (Shipped 2026-03-31)
 - ✅ **v2.0 Bridge** — Phase 2 (Shipped 2026-04-01)
 - ✅ **v3.0 Onboarding** — Phase 3 (Shipped 2026-04-03)
-- 🚧 **v4.0 Performance** — Phase 4 (In Progress)
+- ✅ **v4.0 Performance** — Phase 4 (Shipped 2026-04-03)
+- ✅ **v5.0 Hunter Expansion** — Phase 5 (Shipped 2026-04-03)
+- 🚧 **v6.0 Interview Simulator** — Phase 6 (In Progress)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0, v2.0 & v3.0 (Phases 1-3) — SHIPPED</summary>
+<summary>✅ v1.0 - v4.0 (Phases 1-4) — SHIPPED</summary>
 
 - [x] **Fase 1: Fundação & Identidade** — Configuração Supabase SSR, Migração de Esquema, LockScreen.
 - [x] **Fase 2: Intelligence Bridge** — MCP Memory Guardian, MCP Market Intelligence.
 - [x] **Fase 3: UX & Onboarding** — Visual Holográfico v2.0, Framer Motion, Tour Interativo.
+- [x] **Fase 4: Otimização de Dados** — Streaming de Dados, useOptimistic, Suspense Boundaries v16.1.
 
 </details>
 
-## 🚧 Fase 4: Otimização de Dados (Milestone 4)
-> **Objetivo**: Performance extrema para UI de alta densidade (No-Scroll).
-
-- [ ] **Data Optimization Framework**: Definir e implementar padrões de Server Actions v16.
-- [ ] **Suspense Boundaries Holográficos**: Substituir spinners por esqueletos textuais decrypting.
-- [ ] **Pre-fetching Preditivo**: Implementar lógica de cache antecipado para apps prioritários.
-- [ ] **Validação Final**: Auditoria de segurança (RLS) e performance (Lighthouse).
+- [x] **Fase 5: Expansão de Maestria (Hunter Board)** — Integrou MCP Tavily, streaming de vagas e match score Gemini. [SHIPPED 2026-04-03]
+- [x] **Fase 6: Listening Room (Simulador de Entrevista)** — Captura de áudio, análise multimodal Gemini, visualizador holográfico. [SHIPPED 2026-04-03]
 
 ---
-*Last updated: 2026-04-03 after Milestone 3 Completion*
+*Last updated: 2026-04-03 after Milestone 6.0 Completion*

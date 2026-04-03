@@ -1,46 +1,32 @@
-# Requirements: RonnyZim OS - Backend Architecture (MVP)
+# Requirements: RonnyZim OS - Hunter Expansion & Simulator (Milestone 6)
 
-Especificações de requisitos para a fundação inteligente do sistema.
+Especificações para a ativação do Hunter Board, orquestração MCP e Simulador de Entrevistas.
 
 ## 1. Requisitos Funcionais (FR)
 
-### FR-1: Gestão de Identidade (Auth SSR)
-- **FR-1.1**: Autenticação via `supabase-js` em Next.js 16 (App Router).
-- **FR-1.2**: Persistência de sessão via Middleware para SSR (cookies seguros).
-- **FR-1.3**: Proteção de rotas (Guardas) no servidor para impedir acesso anônimo sem JWT válido.
+### FR-10: Integração MCP Market Intelligence
+- [x] **FR-10.1**: Criar Server Actions para invocar o servidor MCP `market-intelligence`.
+- [x] **FR-10.2**: Implementar função `search_jobs` disparada via UI (Input de Carreira).
+- [x] **FR-10.3**: Persistir vagas encontradas no Supabase vinculadas ao `user_id`.
 
-### FR-2: Persistência de Dados (Supabase PostgreSQL)
-- **FR-2.1**: Esquema relacional com UUID v4 para PKs.
-- **FR-2.2**: Políticas RLS estritas: `auth.uid() = profile_id` ou equivalente.
-- **FR-2.3**: Suporte a Dados de Biorritmo e Astro (Natal Chart).
-- **FR-2.4**: Repositório central de Hunter Alvos e Dossier Insights.
+### FR-11: Cartões de Alvo (Holographic Cards v2.5)
+- [x] **FR-11.1**: Desenvolver o componente `TargetCard` com estética de vidro e animação de "scanning".
+- [x] **FR-11.2**: Aplicar `Suspense` granular para cada cartão individual.
 
-### FR-3: Market Intelligence (MCP Tracker) — ✅ Concluído (v2.0)
-- **FR-3.1**: Integração com **Tavily API** para busca otimizada de vagas.
-- **FR-3.2**: Extração de dados limpos (JSON estruturado) para consumo da IA.
-- **FR-3.3**: Execução local via transporte de Stdio.
+### FR-12: Neural Match Score (Gemini)
+- [x] **FR-12.1**: Criar endpoint/action que envia o Profile e o Job Description para o Gemini.
+- [x] **FR-12.2**: Exibir o score (0-100%) com barra de progresso holográfica.
 
-### FR-4: Memory Guardian (MCP Supabase) — ✅ Concluído (v2.0)
-- **FR-4.1**: Conector inteligente para ler/escrever `user_facts` no Supabase.
-- **FR-4.2**: Abstração de ferramentas de IA para o Oráculo (Ex: `get_user_profile`, `save_hunter_insight`).
-
-### FR-5: UX & Onboarding (Pre-Login Tour)
-- **FR-5.1**: Implementar um "Call to Action" interativo antes do LockScreen.
-- **FR-5.2**: Tour imersivo explicando o ecossistema RonnyZim OS (Dossiês, HunterBoard, Biorritmo).
-- **FR-5.3**: Gatilho de transição fluida para o fluxo de autenticação (AuthGuard).
+### FR-13: Simulador de Entrevistas (Listening Room)
+- [x] **FR-13.1**: Implementar hook `useAudioRecorder` para captura de 180s (MediaRecorder).
+- [x] **FR-13.2**: Criar `WaveVisualizer` holográfico de alta performance (60 FPS via Canvas).
+- [x] **FR-13.3**: Desenvolver Server Action `analyzeInterviewAction` para análise de áudio multimodal.
 
 ## 2. Requisitos Não-Funcionais (NFR)
 
-### NFR-1: Performance (No-Scroll Optimization)
-- **NFR-1.1**: O backend deve retornar dados paginados (Cursor-based) para evitar envios massivos.
-- **NFR-1.2**: Latência total de rede + query deve ser inferior a 300ms.
-
-### NFR-2: Segurança & Privacidade
-- **NFR-2.1**: 100% de cobertura de RLS nas tabelas do MVP.
-- **NFR-2.2**: Cifragem de campos sensíveis (se houver) e conformidade com LGPD/GDPR.
-
-### NFR-3: Escalabilidade de IA
-- **NFR-3.1**: Arquitetura MCP modular para permitir a adição de novos rastreadores sem alteração no Core.
+### NFR-6: Responsividade & Imersão
+- [x] **NFR-6.1**: Utilizar o protocolo de `StreamingFallback` da Fase 4.
+- [x] **NFR-6.2**: Feedback hático visual (glitch) em falhas de uplink ou timeouts.
 
 ---
-*Last updated: 2026-04-01 after Phase 2 Milestone*
+*Last updated: 2026-04-03 after Milestone 6.0 Completion*

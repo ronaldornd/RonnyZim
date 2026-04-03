@@ -10,6 +10,7 @@
     "market:start": "npm run market:start --prefix mcp-servers"
   },
   "dependencies": {
+    "@ai-sdk/rsc": "^2.0.145",
     "axios": "^1.13.5"
   }
 }

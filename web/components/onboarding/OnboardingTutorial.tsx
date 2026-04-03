@@ -122,7 +122,7 @@ export default function OnboardingTutorial({ onComplete }: OnboardingTutorialPro
     const { playSFX } = useCyberSFX();
 
     const handleNext = useCallback(() => {
-        playSFX('click');
+        playSFX('UI_CLICK');
         if (current < SLIDES.length - 1) {
             setCurrent(current + 1);
         } else {
@@ -131,7 +131,7 @@ export default function OnboardingTutorial({ onComplete }: OnboardingTutorialPro
     }, [current, onComplete, playSFX]);
 
     const handlePrev = useCallback(() => {
-        playSFX('click');
+        playSFX('UI_CLICK');
         if (current > 0) {
             setCurrent(current - 1);
         }
@@ -200,8 +200,8 @@ export default function OnboardingTutorial({ onComplete }: OnboardingTutorialPro
                             {/* Controls */}
                             <div className="flex flex-wrap justify-center md:justify-between items-center gap-6 w-full">
                                 <button 
-                                    onClick={() => { playSFX('glitch'); onComplete(); }}
-                                    onMouseEnter={() => playSFX('hover')}
+                                    onClick={() => { playSFX('GLITCH_ERROR'); onComplete(); }}
+                                    onMouseEnter={() => playSFX('UI_CLICK')}
                                     className="text-[10px] font-mono opacity-30 hover:opacity-100 transition-opacity flex items-center gap-2 uppercase tracking-widest group"
                                 >
                                     <X className="w-3 h-3 group-hover:rotate-90 transition-transform" /> PULAR_PROTOCOLO
@@ -211,7 +211,7 @@ export default function OnboardingTutorial({ onComplete }: OnboardingTutorialPro
                                     {current > 0 && (
                                         <button 
                                             onClick={handlePrev}
-                                            onMouseEnter={() => playSFX('hover')}
+                                            onMouseEnter={() => playSFX('UI_CLICK')}
                                             className="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:scale-105 active:scale-95"
                                         >
                                             <ChevronLeft className="w-6 h-6" />
@@ -220,7 +220,7 @@ export default function OnboardingTutorial({ onComplete }: OnboardingTutorialPro
                                     
                                     <button 
                                         onClick={handleNext}
-                                        onMouseEnter={() => playSFX('hover')}
+                                        onMouseEnter={() => playSFX('UI_CLICK')}
                                         className="px-8 py-3 rounded-xl font-black text-black flex items-center gap-3 transition-all hover:scale-105 active:scale-95 shadow-lg group"
                                         style={{ 
                                             backgroundColor: slide.color,

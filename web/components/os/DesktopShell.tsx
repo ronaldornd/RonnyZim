@@ -19,39 +19,25 @@ import {
     Sparkles
 } from 'lucide-react';
 
-export default function DesktopShell() {
-    const [activeApp, setActiveApp] = useState<'loading' | 'genesis' | 'workspace' | 'identity' | 'vault' | 'hunter' | 'rndmind' | 'settings'>('loading');
-    const [userId, setUserId] = useState<string | null>(null);
+interface DesktopShellProps {
+    userId: string;
+    initialApp: 'loading' | 'genesis' | 'workspace' | 'identity' | 'vault' | 'hunter' | 'rndmind' | 'settings';
+    profilePromise: Promise<{
+        stacks: any[];
+        facts: any;
+        quests: any[];
+    }>;
+}
+
+export default function DesktopShell({ userId: initialUserId, initialApp, profilePromise }: DesktopShellProps) {
+    const [activeApp, setActiveApp] = useState<'loading' | 'genesis' | 'workspace' | 'identity' | 'vault' | 'hunter' | 'rndmind' | 'settings'>(initialApp);
+    const [userId, setUserId] = useState<string | null>(initialUserId);
 
     useEffect(() => {
-        async function checkCalibration() {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
-                // Fallback estranho, AuthGuard deveria ter pego. 
-                return;
-            }
-
-            setUserId(session.user.id);
-
-            // Checar se existem fatos de calibração salvas
-            const { data: facts } = await supabase
-                .from('user_facts')
-                .select('id')
-                .eq('user_id', session.user.id)
-                .eq('property_key', 'system_calibration_answer')
-                .limit(1);
-
-            if (facts && facts.length > 0) {
-                setActiveApp('workspace');
-            } else {
-                setActiveApp('genesis');
-            }
-        }
-
-        checkCalibration();
-    }, []);
+        // No longer need to fetch session or calibration here as it's passed from OSPage
+        setUserId(initialUserId);
+        setActiveApp(initialApp);
+    }, [initialUserId, initialApp]);
 
     const handleGenesisComplete = () => {
         setActiveApp('workspace');
@@ -60,12 +46,7 @@ export default function DesktopShell() {
     const handleLogout = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
-        window.location.reload();
-    }
-
-    // Se loading, não mostra nada
-    if (activeApp === 'loading') {
-        return <div className="h-screen w-full bg-[#050505]"></div>;
+        window.location.href = '/'; // Hard redirect to clear server state
     }
 
     // Se Genesis, não mostra a Dock (total isolamento)
@@ -85,7 +66,11 @@ export default function DesktopShell() {
                 </div>
 
                 <div className={activeApp === 'identity' ? 'absolute inset-0 z-0' : 'hidden'}>
-                    <IdentityMatrix userId={userId || ''} isActive={activeApp === 'identity'} />
+                    <IdentityMatrix 
+                        userId={userId || ''} 
+                        isActive={activeApp === 'identity'} 
+                        profilePromise={profilePromise}
+                    />
                 </div>
 
                 <div className={activeApp === 'vault' ? 'absolute inset-0 z-0' : 'hidden'}>
@@ -104,6 +89,7 @@ export default function DesktopShell() {
                     <SettingsApp userId={userId || ''} />
                 </div>
             </div>
+
 
             {/* Ghost Dock (Navegação Escondida) */}
             {/* Um trigger zone transparente na parte inferior de 40px captura o hover */}

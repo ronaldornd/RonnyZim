@@ -1,86 +1,48 @@
-'use client';
+"use client";
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 
-type SFXType = 'click' | 'hover' | 'boot' | 'glitch';
+/**
+ * useCyberSFX - Hook esqueleto para efeitos sonoros e visuais (GSD v4.0)
+ * Os arquivos de áudio não existem no repositório ainda.
+ * Este hook fornece as assinaturas para que a UI possa disparar eventos 
+ * que serão sonorizados futuramente.
+ */
+
+export const SFX_PATH = {
+    GLITCH_ERROR: null, // path sugerido: '/assets/sfx/glitch_error.mp3'
+    XP_GAINED: null,   // path sugerido: '/assets/sfx/xp_up.mp3'
+    UPLINK_START: null, // path sugerido: '/assets/sfx/uplink.mp3'
+    UI_CLICK: null,    // path sugerido: '/assets/sfx/click.mp3'
+};
 
 export function useCyberSFX() {
-  const audioContext = useRef<AudioContext | null>(null);
-
-  const initAudio = useCallback(() => {
-    if (!audioContext.current) {
-      audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-  }, []);
-
-  const playSFX = useCallback((type: SFXType) => {
-    initAudio();
-    if (!audioContext.current) return;
-
-    // Resumir contexto se estiver suspenso (política do browser)
-    if (audioContext.current.state === 'suspended') {
-      audioContext.current.resume();
-    }
-
-    const ctx = audioContext.current;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    switch (type) {
-      case 'click':
-        // Som minimalista: um "tic" rápido e suave
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.05);
-        gain.gain.setValueAtTime(0.05, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.05);
-        break;
-
-      case 'hover':
-        // Hover quase imperceptível, apenas um brilho sonoro
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1500, ctx.currentTime);
-        gain.gain.setValueAtTime(0.015, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.03);
-        break;
-
-      case 'boot':
-        // Glissando ascendente
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(40, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-        gain.gain.setValueAtTime(0.05, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-        break;
-
-      case 'glitch':
-        // Ruído branco curto
-        const bufferSize = ctx.sampleRate * 0.1;
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = Math.random() * 2 - 1;
+    const playSFX = useCallback((key: keyof typeof SFX_PATH) => {
+        const path = SFX_PATH[key];
+        if (!path) {
+            // Silencioso por enquanto, mas log para debug em ambiente dev
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[SFX SKELETON] Triggered ${key} (No asset found)`);
+            }
+            return;
         }
-        const noise = ctx.createBufferSource();
-        noise.buffer = buffer;
-        const noiseGain = ctx.createGain();
-        noiseGain.gain.setValueAtTime(0.05, ctx.currentTime);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-        noise.connect(noiseGain);
-        noiseGain.connect(ctx.destination);
-        noise.start();
-        break;
-    }
-  }, [initAudio]);
 
-  return { playSFX };
+        try {
+            const audio = new Audio(path);
+            audio.volume = 0.5;
+            audio.play().catch(() => {
+                /* Ignorar erros de autoplay ou assets faltando */
+            });
+        } catch (e) {
+            console.warn(`[SFX ERROR] Failed to play ${key}:`, e);
+        }
+    }, []);
+
+    const triggerGlitchVisual = useCallback(() => {
+        // Esta função apenas retorna true para que o componente saiba que deve aplicar o efeito
+        // A lógica real de timing reside nos estados locais dos componentes
+        return true;
+    }, []);
+
+    return { playSFX, triggerGlitchVisual };
 }

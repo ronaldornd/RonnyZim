@@ -2,9 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Play, Square, Loader2, X, AlertCircle, Zap, Activity, Info } from 'lucide-react';
+import { Mic, MicOff, Play, Square, Loader2, X, AlertCircle, Zap, Activity, Info, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/browser';
 import ListeningRoom from './ListeningRoom';
+import { useAudioRecorder } from '@/hooks/useAudioRecorder';
+import { WaveVisualizer } from './WaveVisualizer';
+import { analyzeInterviewAction } from '@/app/actions/hunter';
 
 interface InterviewSimulatorProps {
     isOpen: boolean;
@@ -21,13 +24,35 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
     const [state, setState] = useState<InterviewState>('idle');
     const [history, setHistory] = useState<{ role: 'hunter' | 'user', text: string }[]>([]);
     const [evaluation, setEvaluation] = useState<{ score: number, feedback: string } | null>(null);
-    const [isRecording, setIsRecording] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [questGenerated, setQuestGenerated] = useState(false);
 
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const audioChunksRef = useRef<Blob[]>([]);
+    const { 
+        isRecording, 
+        analyser, 
+        startRecording: startAudioCapture, 
+        stopRecording: stopAudioCapture, 
+        recordingTime, 
+        audioBlob,
+        reset: resetAudio
+    } = useAudioRecorder();
+
     const synthRef = typeof window !== 'undefined' ? window.speechSynthesis : null;
+
+    // Monitora o áudio capturado para processar
+    useEffect(() => {
+        if (audioBlob && state === 'recording_user') {
+            processAudio(audioBlob);
+        }
+    }, [audioBlob]);
+
+    // Cleanup de áudio ao fechar
+    useEffect(() => {
+        if (!isOpen) {
+            resetAudio();
+            if (synthRef) synthRef.cancel();
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         if (isOpen && state === 'idle') {
@@ -74,7 +99,6 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
             utterance.pitch = 0.8; 
             
             const voices = synthRef.getVoices();
-            // Prioridade: Vozes "Premium", "Neural", "Natural" ou de alta qualidade (Google/Microsoft Online)
             const preferredVoice = 
                 voices.find(v => v.lang.includes('pt-BR') && (v.name.includes('Neural') || v.name.includes('Premium')))
                 || voices.find(v => v.lang.includes('pt-BR') && v.name.includes('Natural'))
@@ -84,7 +108,6 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
             
             if (preferredVoice) utterance.voice = preferredVoice;
             
-            // Ajustes para humanizar: pitch levemente mais baixo por ser o "HunterZim" e rate calmo
             utterance.pitch = 0.85; 
             utterance.rate = 0.9; 
 
@@ -97,143 +120,56 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
         }, 150);
     };
 
-    const startRecording = async () => {
+    const handleStartRecording = async () => {
         setError(null);
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            setError("🔒 Bloqueio de Navegador: O acesso ao microfone é proibido via IP de Rede (192.168...). Por favor, acesse a aplicação diretamente por 'http://localhost:3000' para que o navegador libere o hardware.");
-            return;
-        }
-
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-                ? 'audio/webm;codecs=opus' 
-                : 'audio/webm';
-
-            const mediaRecorder = new MediaRecorder(stream, { mimeType });
-            mediaRecorderRef.current = mediaRecorder;
-            audioChunksRef.current = [];
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) audioChunksRef.current.push(event.data);
-            };
-
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-                
-                if (audioBlob.size < 1000) { 
-                    setError("Áudio muito curto ou vazio. Tente falar novamente.");
-                    setState('waiting_for_user');
-                } else {
-                    processAudio(audioBlob);
-                }
-                
-                stream.getTracks().forEach(track => track.stop());
-            };
-
-            mediaRecorder.start(1000); 
-            setIsRecording(true);
+            await startAudioCapture();
             setState('recording_user');
         } catch (err: any) {
-            setError("Erro ao acessar microfone: " + (err.message || "Permissão negada."));
+            setError(err.message);
             setState('waiting_for_user');
         }
     };
 
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
-            setState('evaluating');
-        }
+    const handleStopRecording = () => {
+        stopAudioCapture();
+        setState('evaluating');
     };
-
     const processAudio = async (blob: Blob) => {
         setState('evaluating');
         try {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            const user = session?.user;
-            const token = session?.access_token;
+            const formData = new FormData();
+            formData.append('audio', blob, 'interview.webm');
+            formData.append('jobDescription', jobDescription);
+            formData.append('history', JSON.stringify(history.slice(-4)));
+            formData.append('userName', userName);
+
+            const result = await analyzeInterviewAction(formData);
             
-            // 1. Upload para Supabase Storage
-            const fileName = `${user?.id || 'anon'}/${Date.now()}.webm`;
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('interview_audio')
-                .upload(fileName, blob);
+            if (!result.success) throw new Error(result.error || "Erro na análise neural.");
 
-            if (uploadError) throw uploadError;
+            if (result.quest_generated) {
+                setQuestGenerated(true);
+                setTimeout(() => setQuestGenerated(false), 8000);
+            }
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('interview_audio')
-                .getPublicUrl(fileName);
+            setEvaluation({ score: result.evaluation_score, feedback: result.feedback });
+            
+            setHistory(prev => [
+                ...prev, 
+                { role: 'user', text: result.transcribed_text },
+                ...(result.next_question ? [{ role: 'hunter', text: result.next_question } as const] : [])
+            ]);
 
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = async () => {
-                const base64Audio = (reader.result as string).split(',')[1];
-                const historySlice = history.slice(-4);
-
-                // 2. Processamento Normal (Conteúdo e Próxima Pergunta)
-                const response = await fetch('/api/interview', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        audioBase64: base64Audio,
-                        jobDescription,
-                        gapAnalysis,
-                        history: historySlice,
-                        userName
-                    }),
-                });
-                const data = await response.json();
-                
-                if (response.status === 429 || data.code === 'QUOTA_EXHAUSTED') {
-                    setError("🚫 ENERGIA ESGOTADA: O HunterZim atingiu o limite de requisições gratuitas do Google. Tente trocar para outro modelo no rodapé ou aguarde 1 minuto para recarregar.");
-                    setState('waiting_for_user');
-                    return;
-                }
-
-                if (!response.ok) throw new Error(data.error || "Erro desconhecido na API.");
-
-                // 3. Disparar Análise Comportamental (Listening Room) - Async (não trava o chat)
-                fetch('/api/interview/analyze-audio', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        audioBase64: base64Audio, // Enviamos base64 para o Gemini processar rápido
-                        audio_url: publicUrl,    // URL para o player tocar depois
-                        job_id: jobId // Usar o ID do job passado por prop para vínculo correto
-                    }),
-                }).catch(err => console.error("Análise comportamental falhou:", err));
-
-                if (data.quest_generated) {
-                    setQuestGenerated(true);
-                    setTimeout(() => setQuestGenerated(false), 8000);
-                }
-
-                setEvaluation({ score: data.evaluation_score, feedback: data.feedback });
-                
-                setHistory(prev => [
-                    ...prev, 
-                    { role: 'user', text: data.transcribed_user_text },
-                    ...(data.next_question ? [{ role: 'hunter', text: data.next_question } as const] : [])
-                ]);
-
-                if (data.next_question) {
-                    setState('hunter_speaking');
-                    speak(data.next_question);
-                } else if (data.evaluation_score >= 80) {
-                    const finishText = `Excelente performance, ${userName}. Você provou seu valor para esta posição. Encerrando simulação.`;
-                    speak(finishText);
-                    setHistory(prev => [...prev, { role: 'hunter', text: finishText }]);
-                    setState('finished');
-                }
-            };
+            if (result.next_question) {
+                setState('hunter_speaking');
+                speak(result.next_question);
+            } else if (result.evaluation_score >= 80) {
+                const finishText = `Excelente performance, ${userName}. Você provou seu valor para esta posição. Encerrando simulação.`;
+                speak(finishText);
+                setHistory(prev => [...prev, { role: 'hunter', text: finishText }]);
+                setState('finished');
+            }
         } catch (err: any) {
             setError("Falha no HunterZim: " + err.message);
             setState('waiting_for_user');
@@ -351,11 +287,14 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                                     <motion.button
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={stopRecording}
-                                        className="group relative flex h-20 w-20 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_30px_rgba(var(--primary),0.4)]"
+                                        onClick={handleStopRecording}
+                                        className="group relative flex h-24 w-24 items-center justify-center rounded-full bg-primary text-white shadow-[0_0_40px_rgba(var(--primary),0.6)] z-20"
                                     >
-                                        <Square size={24} className="fill-current" />
-                                        <div className="absolute -inset-4 rounded-full border-2 border-primary/30 animate-ping" />
+                                        <div className="absolute inset-0 rounded-full overflow-hidden">
+                                            <WaveVisualizer analyser={analyser} isRecording={isRecording} />
+                                        </div>
+                                        <Square size={24} className="fill-current relative z-10" />
+                                        <div className="absolute -inset-4 rounded-full border-2 border-primary/30 animate-ping pointer-events-none" />
                                     </motion.button>
                                 ) : state === 'hunter_speaking' ? (
                                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 shadow-[inner_0_0_20px_rgba(var(--primary),0.1)]">
@@ -387,7 +326,7 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                         disabled={state === 'finished'}
-                                        onClick={startRecording}
+                                        onClick={handleStartRecording}
                                         className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-all hover:bg-primary/20 hover:shadow-[0_0_40px_rgba(var(--primary),0.3)] disabled:opacity-30 cursor-pointer group"
                                     >
                                         <Mic size={32} className="transition-transform duration-500 group-hover:scale-110" />
@@ -410,9 +349,15 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                                          state === 'finished' ? 'AVALIAÇÃO CONCLUÍDA' : ''}
                                     </span>
                                     
-                                    <span className="font-sans text-[13px] text-foreground/60 tracking-tight font-medium">
+                                    <span className="font-sans text-[13px] text-foreground/60 tracking-tight font-medium flex items-center gap-2">
+                                        {state === 'recording_user' && (
+                                            <span className="flex items-center gap-1.5 text-primary animate-pulse">
+                                                <Clock size={12} />
+                                                {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')} / 03:00
+                                            </span>
+                                        )}
                                         {state === 'idle' || state === 'waiting_for_user' ? 'Toque no sensor para falar' :
-                                         state === 'recording_user' ? 'Toque para encerrar transmissão' :
+                                         state === 'recording_user' ? '' :
                                          state === 'hunter_speaking' ? 'Aguarde o processamento vocal' :
                                          state === 'evaluating' ? 'Hamiltoniana de decisão em cálculo' :
                                          state === 'finished' ? 'Sessão encerrada com sucesso' : ''}

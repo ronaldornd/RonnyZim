@@ -65,9 +65,11 @@ export async function POST(req: Request) {
         }
 
         // 3. Processar XP no user_stack_mastery
-        // Split target_stack by comma to support multi-stack quests like "Node.js, TypeScript, SQL"
+        // Split target_stack by comma or dot to support multi-stack quests like "Node.js. TypeScript. SQL"
         const rawStackNames = questData.target_stack as string;
-        const stackNames = rawStackNames.split(',').map((s: string) => s.trim()).filter(Boolean);
+        // Regex split: vírgula ou ponto (que não seja o .js do Node.js)
+        // Mais seguro: split por vírgula ou por " . " ou ", "
+        const stackNames = rawStackNames.split(/[,\.]\s+/).map((s: string) => s.trim()).filter(Boolean);
         const rewardXp = questData.xp_reward;
         // Distribute XP evenly across all stacks
         const xpPerStack = Math.max(1, Math.floor(rewardXp / stackNames.length));

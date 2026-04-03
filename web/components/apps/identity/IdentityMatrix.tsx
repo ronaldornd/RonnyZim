@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useOptimistic, useTransition, use, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/browser';
 import QuestDetailModal from './QuestDetailModal';
@@ -21,11 +21,24 @@ import {
     Check,
     X as XIcon,
     Network,
-    LayoutList
+    LayoutList,
+    Zap,
+    Play
 } from 'lucide-react';
 import { ColorMap } from '../genesis/StackSelector';
 import BiorhythmWidget from '../daily/BiorhythmWidget';
 import QuestGrid from './QuestGrid';
+import { StreamingFallback } from '@/components/ui/StreamingFallback';
+import { useCyberSFX } from '@/hooks/useCyberSFX';
+import { 
+    completeQuestAction, 
+    updateUserFactsAction,
+    deleteUserStackAction,
+    DailyQuest as RemoteDailyQuest, 
+    UserStack as RemoteUserStack 
+} from '@/app/actions/profile';
+import IdentityPolygon from './IdentityPolygon';
+import SkillScanCard from './SkillScanCard';
 
 interface UserStack {
     id: string;
@@ -41,26 +54,67 @@ interface UserStack {
 interface IdentityMatrixProps {
     userId: string;
     isActive?: boolean;
+    profilePromise?: Promise<{
+        stacks: RemoteUserStack[];
+        facts: any;
+        quests: RemoteDailyQuest[];
+    }>;
 }
 
-interface DailyQuest {
-    id: string;
-    title: string;
-    description: string;
-    xp_reward: number;
-    target_stack: string;
-    status: string;
-    completed: boolean; // para controle de otimismo no front
-}
+// Removida interface redundante. Usando RemoteDailyQuest do profile.ts
 
 
 
-export default function IdentityMatrix({ userId, isActive = true }: IdentityMatrixProps) {
-    const [stacks, setStacks] = useState<UserStack[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [quests, setQuests] = useState<DailyQuest[]>([]);
+export default function IdentityMatrix({ userId, isActive = true, profilePromise }: IdentityMatrixProps) {
+    // Consumir dados do servidor via 'use' hook (Next.js 16/React 19)
+    const initialData = profilePromise ? use(profilePromise) : null;
+    
+    const [isPending, startTransition] = useTransition();
+    const { triggerSFX, playSuccess, playError, playGlitch } = useCyberSFX();
+
+    // Estágios de Identidade (Facts)
+    const [displayName, setDisplayName] = useState(initialData?.facts?.display_name || 'Operador');
+    const [profileTitle, setProfileTitle] = useState(initialData?.facts?.profile_title || 'Arquiteto Full Stack');
+    const [birthDate, setBirthDate] = useState(initialData?.facts?.birth_date || '');
+    const [birthTime, setBirthTime] = useState(initialData?.facts?.birth_time || '');
+    const [birthCity, setBirthCity] = useState(initialData?.facts?.birth_city || '');
+
+    // Mastery & Jornada com Optimismo
+    const [optimisticStacks, addOptimisticStack] = useOptimistic(
+        initialData?.stacks || [],
+        (state: RemoteUserStack[], { stackId, xpDelta }: { stackId: string, xpDelta: number }) => {
+            return state.map(s => {
+                if (s.id === stackId) {
+                    let newXp = s.current_xp + xpDelta;
+                    let newLevel = s.current_level;
+                    const threshold = newLevel * 100;
+                    if (newXp >= threshold) {
+                        newXp -= threshold;
+                        newLevel += 1;
+                    }
+                    return { ...s, current_xp: newXp, current_level: newLevel };
+                }
+                return s;
+            });
+        }
+    );
+
+    const [optimisticQuests, addOptimisticQuest] = useOptimistic(
+        initialData?.quests || [],
+        (state: RemoteDailyQuest[], questId: string) => {
+            return state.map(q => q.id === questId ? { ...q, completed: true, status: 'completed' } : q);
+        }
+    );
+
+    // Estados de Erro e Cooldown (Protocolo Fase 4)
+    const [glitchActive, setGlitchActive] = useState<string | boolean>(false);
+    const [isCooldown, setIsCooldown] = useState(false);
+
+    const [loading, setLoading] = useState(!initialData);
+    const [quests, setQuests] = useState<RemoteDailyQuest[]>(initialData?.quests || []);
+    const [stacks, setStacks] = useState<RemoteUserStack[]>(initialData?.stacks || []);
     const [viewMode, setViewMode] = useState<'list' | 'neural'>('list');
-    const [selectedQuest, setSelectedQuest] = useState<DailyQuest | null>(null);
+    const [selectedQuest, setSelectedQuest] = useState<RemoteDailyQuest | null>(null);
     const [xpToasts, setXpToasts] = useState<{ id: number; message: string }[]>([]);
     const [activeTab, setActiveTab] = useState<'IDENTIDADE' | 'MAESTRIA' | 'AURA' | 'JORNADA'>('IDENTIDADE');
     const [maestriaPage, setMaestriaPage] = useState(0);
@@ -70,11 +124,6 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
 
     // Profile Editável
     const [editMode, setEditMode] = useState(false);
-    const [displayName, setDisplayName] = useState('Operador');
-    const [profileTitle, setProfileTitle] = useState('Arquiteto Full Stack');
-    const [birthDate, setBirthDate] = useState('');
-    const [birthTime, setBirthTime] = useState('');
-    const [birthCity, setBirthCity] = useState('');
     const [editName, setEditName] = useState('');
     const [editTitle, setEditTitle] = useState('');
     const [editBirth, setEditBirth] = useState('');
@@ -82,81 +131,10 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
     const [editCity, setEditCity] = useState('');
 
     const fetchIdentityStats = async () => {
-        if (!userId) return;
+        if (!userId || initialData) return; // Se já temos initialData (SWR), pula o fetch agressivo
 
         const supabase = createClient();
-
-        // Buscar Stacks Atuais (Mastery RPG)
-        const { data, error } = await supabase
-            .from('user_stack_mastery')
-            .select(`
-                    id,
-                    current_xp,
-                    current_level,
-                    global_stacks (
-                        name,
-                        category,
-                        icon_slug
-                    )
-                `)
-            .eq('user_id', userId)
-            .eq('is_active', true);
-
-        if (data && !error) {
-            // @ts-ignore - Supabase join typing is tricky
-            setStacks(data as UserStack[]);
-        }
-
-        // Buscar Profile Facts (name, title, birth_date, birth_time, birth_city, birth_data)
-        const { data: facts } = await supabase
-            .from('user_facts')
-            .select('property_key, value')
-            .eq('user_id', userId)
-            .in('property_key', ['display_name', 'full_name', 'profile_title', 'birth_date', 'birth_time', 'birth_city', 'birth_data']);
-
-        if (facts) {
-            const fMap: Record<string, string> = {};
-            facts.forEach((f: any) => { fMap[f.property_key] = f.value; });
-            
-            // display_name tem prioridade, fallback para full_name do Genesis
-            setDisplayName(fMap.display_name || fMap.full_name || 'Operador');
-            if (fMap.profile_title) setProfileTitle(fMap.profile_title);
-            
-            // Dados Natais com Fallback para birth_data (Legado)
-            let bd = fMap.birth_date;
-            let bt = fMap.birth_time;
-            let bc = fMap.birth_city;
-
-            if (!bd && fMap.birth_data) {
-                // Tenta extrair do formato: "Nascido em DD/MM/YYYY as HH:mm na cidade de CIDADE"
-                const dateMatch = fMap.birth_data.match(/(\d{2}\/\d{2}\/\d{4})/);
-                const timeMatch = fMap.birth_data.match(/as (\d{2}:\d{2})/);
-                const cityMatch = fMap.birth_data.match(/na cidade de (.+)/);
-                
-                if (dateMatch) {
-                    const [d, m, y] = dateMatch[1].split('/');
-                    bd = `${y}-${m}-${d}`; // Converte para YYYY-MM-DD
-                }
-                if (timeMatch) bt = timeMatch[1];
-                if (cityMatch) bc = cityMatch[1];
-            }
-
-            if (bd) setBirthDate(bd);
-            if (bt) setBirthTime(bt);
-            if (bc) setBirthCity(bc);
-        }
-
-        // Buscar Quests usando a API nova para evitar expor chaves extras
-        try {
-            const qRes = await fetch(`/api/quests?userId=${userId}`);
-            const qData = await qRes.json();
-            if (qData.quests) {
-                setQuests(qData.quests.map((q: any) => ({ ...q, completed: false })));
-            }
-        } catch (err) {
-            console.error('Falha ao buscar quests', err);
-        }
-
+        console.log("[IDENTITY] Fallback fetch activated");
         setLoading(false);
     };
 
@@ -176,69 +154,93 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
     };
 
     const saveProfile = async () => {
-        const supabase = createClient();
         const updates = [
-            { user_id: userId, category: 'core_identity', property_key: 'display_name', value: editName },
-            { user_id: userId, category: 'core_identity', property_key: 'profile_title', value: editTitle },
-            { user_id: userId, category: 'astrology', property_key: 'birth_date', value: editBirth },
-            { user_id: userId, category: 'astrology', property_key: 'birth_time', value: editTime },
-            { user_id: userId, category: 'astrology', property_key: 'birth_city', value: editCity },
-            // Atualizar o human-readable birth_data para compatibilidade reversa
+            { category: 'core_identity', property_key: 'display_name', value: editName },
+            { category: 'core_identity', property_key: 'profile_title', value: editTitle },
+            { category: 'astrology', property_key: 'birth_date', value: editBirth },
+            { category: 'astrology', property_key: 'birth_time', value: editTime },
+            { category: 'astrology', property_key: 'birth_city', value: editCity },
             { 
-                user_id: userId, 
                 category: 'astrology', 
                 property_key: 'birth_data', 
                 value: `Nascido em ${editBirth.split('-').reverse().join('/')} as ${editTime} na cidade de ${editCity}` 
             },
         ];
 
-        const { error: upsertError } = await supabase
-            .from('user_facts')
-            .upsert(updates, { onConflict: 'user_id,property_key' });
-
-        if (upsertError) {
-            console.error('❌ Falha ao salvar perfil:', upsertError);
-            return;
-        }
-
-        setDisplayName(editName);
-        setProfileTitle(editTitle);
-        setBirthDate(editBirth);
-        setBirthTime(editTime);
-        setBirthCity(editCity);
-        localStorage.removeItem('rndmind_astro_cache');
-        setEditMode(false);
+        startTransition(async () => {
+            try {
+                await updateUserFactsAction(userId, updates);
+                
+                setDisplayName(editName);
+                setProfileTitle(editTitle);
+                setBirthDate(editBirth);
+                setBirthTime(editTime);
+                setBirthCity(editCity);
+                localStorage.removeItem('rndmind_astro_cache');
+                setEditMode(false);
+                playSuccess();
+            } catch (error) {
+                console.error('❌ Falha ao salvar perfil:', error);
+                playError();
+            }
+        });
     };
 
-    const handleCompleteQuest = async (questId: string, xpReward: number, stackName: string) => {
-        // Update otimista da UI
-        setQuests(prev => prev.map(q => q.id === questId ? { ...q, completed: true } : q));
+    const handleCompleteQuest = async (questId: string, xpReward: number, stackName: string, stackId: string) => {
+        if (isCooldown) return;
 
-        // Mostrar Toast de XP
+        // Mostrar Toast de XP (Visual Instantâneo)
         const toastId = Date.now();
         setXpToasts(prev => [...prev, { id: toastId, message: `+${xpReward} XP em ${stackName}` }]);
-
-        // Remover toast após 2s
+        
+        // Cooldown preventivo de spam visual
         setTimeout(() => {
             setXpToasts(prev => prev.filter(t => t.id !== toastId));
         }, 2000);
 
-        // Disparar update no Backend real
-        try {
-            await fetch('/api/quests', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ questId, userId })
-            });
-            // Re-fetch radar/skills silenciosamente para animar o ganho de progresso visualmente
-            await fetchIdentityStats();
-        } catch (e) {
-            console.error('Falha na api de gamificação', e);
-        }
+        // Iniciar Transição Otimista (React 19)
+        startTransition(async () => {
+            addOptimisticQuest(questId);
+            addOptimisticStack({ stackId, xpDelta: xpReward });
+            
+            try {
+                // Chamar Server Action
+                await completeQuestAction(userId, questId, stackId, xpReward);
+                playSuccess();
+            } catch (e) {
+                console.error('❌ UPLINK FAILED:', e);
+                
+                // Ativar Protocolo de Glitch e Cooldown (Rollback Visual)
+                playError();
+                playGlitch();
+                setGlitchActive(questId); // Marca o quest específico com efeito de instabilidade
+                setIsCooldown(true);
+                
+                // Reset tático após 3s
+                setTimeout(() => {
+                    setGlitchActive(false);
+                    setIsCooldown(false);
+                }, 3000);
+            }
+        });
     };
 
-    // Preparar dados do gráfico de radar
-    const radarData = stacks.map(s => ({
+    const handleDeleteStack = async (stackId: string) => {
+        if (!userId) return;
+        
+        startTransition(async () => {
+            try {
+                await deleteUserStackAction(userId, stackId);
+                playSuccess();
+            } catch (e) {
+                console.error('❌ PURGE FAILED:', e);
+                playError();
+            }
+        });
+    };
+
+    // Preparar dados do gráfico de radar usando valores otimistas
+    const radarData = optimisticStacks.map(s => ({
         subject: s.global_stacks.name,
         A: (s.current_level * 10) + (s.current_xp / 10), 
         fullMark: 100,
@@ -246,10 +248,10 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
 
     const renderTabs = () => {
         const tabs = [
-            { id: 'IDENTIDADE', icon: <UserCircle2 className="w-4 h-4" />, label: 'IDENTIDADE' },
-            { id: 'MAESTRIA', icon: <Cpu className="w-4 h-4" />, label: 'MAESTRIA' },
-            { id: 'AURA', icon: <Crosshair className="w-4 h-4" />, label: 'AURA' },
-            { id: 'JORNADA', icon: <Activity className="w-4 h-4" />, label: 'JORNADA' },
+            { id: 'IDENTIDADE', icon: <UserCircle2 className="w-4 h-4 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />, label: 'IDENTIDADE' },
+            { id: 'MAESTRIA', icon: <Cpu className="w-4 h-4 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />, label: 'MAESTRIA' },
+            { id: 'AURA', icon: <Crosshair className="w-4 h-4 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />, label: 'AURA' },
+            { id: 'JORNADA', icon: <Activity className="w-4 h-4 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />, label: 'JORNADA' },
         ];
 
         return (
@@ -281,7 +283,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
     if (loading) {
         return (
             <div className="w-full h-full flex flex-col items-center justify-center font-mono text-green-500/50 gap-4">
-                <Shield className="w-12 h-12 animate-pulse opacity-50" />
+                <Shield className="w-12 h-12 animate-pulse opacity-50 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
                 <span className="tracking-widest uppercase text-[10px]">Iniciando Protocolo de Identidade...</span>
             </div>
         );
@@ -309,17 +311,23 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                 <div className="flex flex-col gap-4 py-2">
                                     <div className="flex flex-col md:flex-row items-center md:items-start gap-6 border border-white/5 bg-white/[0.01] p-6 rounded-[2rem] backdrop-blur-md relative overflow-hidden shrink-0">
                                         <div className="absolute top-0 right-0 opacity-5 p-8 pointer-events-none">
-                                            <UserCircle2 className="w-48 h-48 text-cyan-500" />
+                                            <IdentityPolygon 
+                                                className="w-48 h-48"
+                                                level={optimisticStacks.reduce((a, s) => a + s.current_level, 0)}
+                                            />
                                         </div>
 
                                         <div className="relative shrink-0">
-                                            <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-cyan-500/40 to-blue-500/40 p-1 shadow-[0_0_30px_rgba(6,182,212,0.1)]">
-                                                <div className="w-full h-full bg-black rounded-full flex items-center justify-center border-2 border-[#050505]">
-                                                    <UserCircle2 className="w-14 h-14 text-slate-400" />
+                                            <div className="w-28 h-28 rounded-full bg-cyan-500/10 p-1 shadow-[0_0_30px_rgba(6,182,212,0.15)] border border-cyan-500/20">
+                                                <div className="w-full h-full bg-black/40 backdrop-blur-xl rounded-full flex items-center justify-center border border-cyan-500/30 overflow-hidden">
+                                                    <IdentityPolygon 
+                                                        level={optimisticStacks.reduce((a, s) => a + s.current_level, 0)}
+                                                        xp={Math.round((optimisticStacks.reduce((a, s) => a + s.current_xp, 0) / (Math.max(1, optimisticStacks.length) * 100)) * 100) || 0}
+                                                    />
                                                 </div>
                                             </div>
                                             <div className="absolute -bottom-1 -right-1 bg-cyan-500 text-black text-[9px] font-black px-2 py-1 rounded-md border border-black shadow-lg uppercase tracking-tighter">
-                                                NVL {stacks.reduce((a, s) => a + s.current_level, 0) || '—'}
+                                                NVL {optimisticStacks.length > 0 ? optimisticStacks.reduce((a, s) => a + s.current_level, 0) : '—'}
                                             </div>
                                         </div>
 
@@ -375,11 +383,11 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                                     </div>
 
                                                     <div className="flex gap-3 pt-4">
-                                                        <button onClick={saveProfile} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-cyan-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)]">
-                                                            <Check className="w-3 h-3" /> Confirmar
+                                                        <button onClick={saveProfile} disabled={isPending} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-cyan-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] disabled:opacity-50">
+                                                            <Check className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> {isPending ? 'SALVANDO...' : 'Confirmar'}
                                                         </button>
                                                         <button onClick={() => setEditMode(false)} className="flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 text-slate-500 text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 transition-all">
-                                                            <XIcon className="w-3 h-3" /> Cancelar
+                                                            <XIcon className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> Cancelar
                                                         </button>
                                                     </div>
                                                 </div>
@@ -390,7 +398,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                                             {displayName}
                                                         </h1>
                                                         <button onClick={enterEditMode} className="p-2 rounded-xl text-slate-700 hover:text-cyan-400 hover:bg-white/5 transition-all" title="Editar Perfil">
-                                                            <Pencil className="w-4 h-4" />
+                                                            <Pencil className="w-4 h-4 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
                                                         </button>
                                                     </div>
                                                     <p className="text-[10px] font-bold text-cyan-500/60 tracking-[0.4em] uppercase mt-2">{profileTitle}</p>
@@ -410,11 +418,13 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                                         <div className="flex items-center gap-6">
                                                             <div className="text-center">
                                                                 <p className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em] mb-1">XP ACUMULADO</p>
-                                                                <p className="text-lg font-black text-slate-200 tracking-tighter">{stacks.reduce((a, s) => a + s.current_xp, 0)}</p>
+                                                                <p className="text-lg font-black text-slate-200 tracking-tighter text-glow-cyan">
+                                                                    {optimisticStacks.reduce((a, s) => a + s.current_xp, 0)}
+                                                                </p>
                                                             </div>
                                                             <div className="text-center">
                                                                 <p className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em] mb-1">TECNOLOGIAS</p>
-                                                                <p className="text-lg font-black text-slate-200 tracking-tighter">{stacks.length}</p>
+                                                                <p className="text-lg font-black text-slate-200 tracking-tighter">{optimisticStacks.length}</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -448,7 +458,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
                                                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                                     <UserCircle2 className="w-3 h-3 text-cyan-500" /> RESUMO BIOGRÁFICO
+                                                     <UserCircle2 className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> RESUMO BIOGRÁFICO
                                                  </p>
                                                  <p className="text-xs text-slate-400 leading-relaxed font-medium">
                                                      Especialista em Engenharia de Software com foco em ecossistemas React, Node.js e automação de processos via IA. Arquiteto do RonnyZim OS, focado em alta performance e interfaces de densidade profissional.
@@ -456,7 +466,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                              </div>
                                              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
                                                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                                     <Award className="w-3 h-3 text-amber-500" /> HISTÓRICO OPERACIONAL
+                                                     <Award className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> HISTÓRICO OPERACIONAL
                                                  </p>
                                                  <div className="space-y-3">
                                                      <div>
@@ -482,9 +492,9 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
 
                             {activeTab === 'MAESTRIA' && (
                                 <div className="h-full flex flex-col gap-6 py-4">
-                                    <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                                    <div className="flex items-center justify-between border-b border-white/5 pb-4 px-2">
                                         <div className="flex items-center gap-3">
-                                            <Cpu className="w-5 h-5 text-cyan-400" />
+                                            <Cpu className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
                                             <h2 className="text-xs font-black tracking-[0.3em] text-slate-500 uppercase">Matriz de Habilidades</h2>
                                         </div>
                                         <div className="flex items-center gap-1 p-1 bg-white/[0.03] border border-white/5 rounded-xl">
@@ -494,7 +504,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                                     viewMode === 'list' ? 'bg-white/10 text-cyan-400 shadow-inner' : 'text-slate-600 hover:text-slate-400'
                                                 }`}
                                             >
-                                                <LayoutList className="w-3 h-3" /> LISTA
+                                                <LayoutList className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> LISTA
                                             </button>
                                             <button
                                                 onClick={() => setViewMode('neural')}
@@ -502,179 +512,210 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
                                                     viewMode === 'neural' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-slate-600 hover:text-slate-400'
                                                 }`}
                                             >
-                                                <Network className="w-3 h-3" /> NEURAL
+                                                <Network className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> NEURAL
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="flex-1 flex flex-col">
-                                        {viewMode === 'list' ? (
-                                            stacks.length === 0 ? (
-                                                <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[2rem] text-slate-600">
-                                                    Nenhum DNA técnico registrado.
-                                                </div>
-                                            ) : (
-                                                <div className="flex-1 flex flex-col">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
-                                                        {stacks.slice(maestriaPage * stacksPerPage, (maestriaPage + 1) * stacksPerPage).map((stack) => {
-                                                            const brandColor = ColorMap[stack.global_stacks.icon_slug.toLowerCase()] || ColorMap['default'];
-                                                            const nextLevelXp = stack.current_level * 100;
-                                                            const progressPercent = Math.min(100, (stack.current_xp / nextLevelXp) * 100);
-
-                                                            return (
-                                                                <div key={stack.id} className="p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:border-white/10 transition-all group">
-                                                                    <div className="flex items-center justify-between mb-4">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:border-white/10 transition-all">
-                                                                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brandColor, boxShadow: `0 0 10px ${brandColor}` }} />
-                                                                            </div>
-                                                                            <div>
-                                                                                <span className="font-black text-[11px] tracking-widest uppercase block">{stack.global_stacks.name}</span>
-                                                                                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-tighter">{stack.global_stacks.category}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="text-right">
-                                                                            <span className="text-[10px] font-black text-cyan-400 font-mono">NVL {stack.current_level}</span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="relative w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                                                        <motion.div
-                                                                            initial={{ width: 0 }}
-                                                                            animate={{ width: `${progressPercent}%` }}
-                                                                            className="absolute top-0 left-0 h-full rounded-full"
-                                                                            style={{ backgroundColor: brandColor }}
-                                                                        />
-                                                                    </div>
-                                                                    <div className="flex justify-between mt-3">
-                                                                        <span className="text-[8px] text-slate-600 font-mono uppercase">XP: {stack.current_xp}</span>
-                                                                        <span className="text-[8px] text-slate-600 font-mono uppercase">NEXT: {nextLevelXp}</span>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
+                                    <div className="flex-1 flex flex-col px-2">
+                                        <Suspense fallback={<StreamingFallback label="SCANNING MASTERY..." />}>
+                                            {viewMode === 'list' ? (
+                                                optimisticStacks.length === 0 ? (
+                                                    <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[2rem] text-slate-600">
+                                                        Nenhum DNA técnico registrado.
                                                     </div>
+                                                ) : (
+                                                    <div className="flex-1 flex flex-col">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
+                                                            {optimisticStacks.slice(maestriaPage * stacksPerPage, (maestriaPage + 1) * stacksPerPage).map((stack) => {
+                                                                const brandColor = ColorMap[stack.global_stacks.icon_slug.toLowerCase()] || ColorMap['default'];
+                                                                const nextLevelXp = stack.current_level * 100;
+                                                                const progressPercent = Math.min(100, (stack.current_xp / nextLevelXp) * 100);
 
-                                                    {stacks.length > stacksPerPage && (
-                                                        <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
-                                                            <button 
-                                                                onClick={() => setMaestriaPage(p => Math.max(0, p - 1))}
-                                                                disabled={maestriaPage === 0}
-                                                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${maestriaPage === 0 ? 'text-zinc-800' : 'text-cyan-500 hover:bg-cyan-500/10'}`}
-                                                            >
-                                                                Anterior
-                                                            </button>
-                                                            <span className="text-[9px] font-mono font-black text-zinc-600 uppercase tracking-widest">
-                                                                Página {maestriaPage + 1} de {Math.ceil(stacks.length / stacksPerPage)}
-                                                            </span>
-                                                            <button 
-                                                                onClick={() => setMaestriaPage(p => Math.min(Math.ceil(stacks.length / stacksPerPage) - 1, p + 1))}
-                                                                disabled={maestriaPage >= Math.ceil(stacks.length / stacksPerPage) - 1}
-                                                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${maestriaPage >= Math.ceil(stacks.length / stacksPerPage) - 1 ? 'text-zinc-800' : 'text-cyan-500 hover:bg-cyan-500/10'}`}
-                                                            >
-                                                                Próxima
-                                                            </button>
+                                                                return (
+                                                                    <SkillScanCard 
+                                                                        key={stack.id}
+                                                                        id={stack.id}
+                                                                        name={stack.global_stacks.name}
+                                                                        category={stack.global_stacks.category}
+                                                                        level={stack.current_level}
+                                                                        xp={stack.current_xp}
+                                                                        nextLevelXp={nextLevelXp}
+                                                                        progressPercent={progressPercent}
+                                                                        brandColor={brandColor}
+                                                                        onDelete={handleDeleteStack}
+                                                                    />
+                                                                );
+                                                            })}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            )
-                                        ) : (
-                                            <div className="h-full min-h-[400px]">
-                                                <NeuralGraph
-                                                    stacks={stacks as any}
-                                                    quests={quests as any}
-                                                    userName={displayName}
-                                                    totalLevel={stacks.reduce((a, s) => a + s.current_level, 0)}
-                                                    userId={userId}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
 
-                            {activeTab === 'AURA' && (
-                                <div className="h-full flex flex-col gap-8 py-4 items-center justify-center">
-                                    <div className="w-full max-w-2xl bg-white/[0.01] border border-white/5 rounded-[3rem] p-12 backdrop-blur-xl relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent pointer-events-none" />
-                                        
-                                        <div className="text-center mb-8 relative z-10">
-                                            <h2 className="text-xs font-black tracking-[0.4em] text-cyan-500 uppercase mb-2 flex items-center justify-center gap-3">
-                                                <Crosshair className="w-4 h-4" /> AURA DO PERFIL OPERACIONAL
-                                            </h2>
-                                            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest italic">Análise de Geometria Técnica Baseada em Stacks Mestre</p>
-                                        </div>
-
-                                        <div className="w-full h-[350px] relative z-10">
-                                            {stacks.length > 2 ? (
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                                                        <PolarGrid stroke="#ffffff08" />
-                                                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 8, fontFamily: 'Inter', fontWeight: 900 }} />
-                                                        <Radar name="Habilidades" dataKey="A" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.15} />
-                                                        <Tooltip
-                                                            contentStyle={{ backgroundColor: '#000', border: '1px solid #ffffff10', borderRadius: '12px', fontSize: '10px' }}
-                                                            itemStyle={{ color: '#06b6d4' }}
-                                                        />
-                                                    </RadarChart>
-                                                </ResponsiveContainer>
+                                                        {optimisticStacks.length > stacksPerPage && (
+                                                            <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
+                                                                <button 
+                                                                    onClick={() => setMaestriaPage(p => Math.max(0, p - 1))}
+                                                                    disabled={maestriaPage === 0}
+                                                                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${maestriaPage === 0 ? 'text-zinc-800' : 'text-cyan-500 hover:bg-cyan-500/10'}`}
+                                                                >
+                                                                    Anterior
+                                                                </button>
+                                                                <span className="text-[9px] font-mono font-black text-zinc-600 uppercase tracking-widest">
+                                                                    Página {maestriaPage + 1} de {Math.ceil(optimisticStacks.length / stacksPerPage)}
+                                                                </span>
+                                                                <button 
+                                                                    onClick={() => setMaestriaPage(p => Math.min(Math.ceil(optimisticStacks.length / stacksPerPage) - 1, p + 1))}
+                                                                    disabled={maestriaPage >= Math.ceil(optimisticStacks.length / stacksPerPage) - 1}
+                                                                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${maestriaPage >= Math.ceil(optimisticStacks.length / stacksPerPage) - 1 ? 'text-zinc-800' : 'text-cyan-500 hover:bg-cyan-500/10'}`}
+                                                                >
+                                                                    Próxima
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
                                             ) : (
-                                                <div className="h-full flex flex-col items-center justify-center text-slate-600 text-[10px] text-center px-12 uppercase tracking-widest italic">
-                                                    <Crosshair className="w-12 h-12 mb-4 opacity-10" />
-                                                    Protocolo Genesis Incompleto. Mínimo de 3 tecnologias necessárias para projetar a Aura.
+                                                <div className="h-full min-h-[400px]">
+                                                    <NeuralGraph
+                                                        stacks={optimisticStacks as any}
+                                                        quests={optimisticQuests as any}
+                                                        userName={displayName}
+                                                        totalLevel={optimisticStacks.reduce((a, s) => a + s.current_level, 0)}
+                                                        userId={userId}
+                                                    />
                                                 </div>
                                             )}
-                                        </div>
+                                        </Suspense>
                                     </div>
                                 </div>
                             )}
 
                             {activeTab === 'JORNADA' && (
                                 <div className="h-full flex flex-col gap-6 py-4 px-2">
-                                    <div className="space-y-6">
-                                        <div className="p-6 rounded-[2rem] border border-white/5 bg-white/[0.01]">
-                                             <BiorhythmWidget userId={userId} />
-                                        </div>
-
-                                        <div className="pt-2 flex-1 flex flex-col">
-                                            <div className="flex items-center justify-between mb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <Award className="w-5 h-5 text-amber-500" />
-                                                    <h3 className="text-xs font-black tracking-[0.3em] text-slate-500 uppercase">Log de Missões Diárias</h3>
-                                                </div>
-                                                
-                                                {quests.length > questsPerPage && (
-                                                    <div className="flex items-center gap-4">
-                                                        <span className="text-[9px] font-mono font-black text-zinc-600 uppercase tracking-widest">
-                                                            Página {jornadaPage + 1} de {Math.ceil(quests.length / questsPerPage)}
-                                                        </span>
-                                                        <div className="flex gap-1">
-                                                            <button 
-                                                                onClick={() => setJornadaPage(p => Math.max(0, p - 1))}
-                                                                disabled={jornadaPage === 0}
-                                                                className={`p-2 rounded-lg transition-all ${jornadaPage === 0 ? 'text-zinc-800' : 'text-amber-500 hover:bg-amber-500/10'}`}
-                                                            >
-                                                                <LayoutList className="w-3 h-3 rotate-180" />
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => setJornadaPage(p => Math.min(Math.ceil(quests.length / questsPerPage) - 1, p + 1))}
-                                                                disabled={jornadaPage >= Math.ceil(quests.length / questsPerPage) - 1}
-                                                                className={`p-2 rounded-lg transition-all ${jornadaPage >= Math.ceil(quests.length / questsPerPage) - 1 ? 'text-zinc-800' : 'text-amber-500 hover:bg-amber-500/10'}`}
-                                                            >
-                                                                <LayoutList className="w-3 h-3" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                    <Suspense fallback={<StreamingFallback label="SYNCHRONIZING QUESTS..." />}>
+                                        <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                                            <div className="p-6 rounded-[2rem] border border-white/5 bg-white/[0.01]">
+                                                 <BiorhythmWidget userId={userId} />
                                             </div>
-                                            <QuestGrid 
-                                                userId={userId}
-                                                quests={quests.slice(jornadaPage * questsPerPage, (jornadaPage + 1) * questsPerPage)}
-                                                onCompleteQuest={handleCompleteQuest}
-                                                onSelectQuest={setSelectedQuest}
-                                            />
+
+                                            <div className="pt-2 flex-1 flex flex-col">
+                                                <div className="flex items-center justify-between mb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <Award className="w-5 h-5 text-amber-500" />
+                                                        <h3 className="text-xs font-black tracking-[0.3em] text-slate-500 uppercase">Log de Missões Diárias</h3>
+                                                    </div>
+                                                    
+                                                    {optimisticQuests.length > questsPerPage && (
+                                                        <div className="flex items-center gap-4">
+                                                            <span className="text-[9px] font-mono font-black text-zinc-600 uppercase tracking-widest">
+                                                                Página {jornadaPage + 1} de {Math.ceil(optimisticQuests.length / questsPerPage)}
+                                                            </span>
+                                                            <div className="flex gap-1">
+                                                                <button 
+                                                                    onClick={() => setJornadaPage(p => Math.max(0, p - 1))}
+                                                                    disabled={jornadaPage === 0}
+                                                                    className={`p-2 rounded-lg transition-all ${jornadaPage === 0 ? 'text-zinc-800' : 'text-amber-500 hover:bg-amber-500/10'}`}
+                                                                >
+                                                                    <LayoutList className="w-3 h-3 rotate-180 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => setJornadaPage(p => Math.min(Math.ceil(optimisticQuests.length / questsPerPage) - 1, p + 1))}
+                                                                    disabled={jornadaPage >= Math.ceil(optimisticQuests.length / questsPerPage) - 1}
+                                                                    className={`p-2 rounded-lg transition-all ${jornadaPage >= Math.ceil(optimisticQuests.length / questsPerPage) - 1 ? 'text-zinc-800' : 'text-amber-500 hover:bg-amber-500/10'}`}
+                                                                >
+                                                                    <LayoutList className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-1 gap-4">
+                                                    {optimisticQuests.slice(jornadaPage * questsPerPage, (jornadaPage + 1) * questsPerPage).map((quest) => {
+                                                        const isCompleted = quest.completed || quest.status === 'completed';
+                                                        const hasGlitch = glitchActive === quest.id;
+                                                        
+                                                        return (
+                                                            <motion.div
+                                                                key={quest.id}
+                                                                animate={hasGlitch ? {
+                                                                    x: [0, -2, 2, -1, 1, 0],
+                                                                    filter: ["none", "hue-rotate(90deg) brightness(1.5)", "none"],
+                                                                } : {}}
+                                                                transition={hasGlitch ? { repeat: Infinity, duration: 0.1 } : {}}
+                                                                className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden group ${
+                                                                    isCompleted 
+                                                                        ? 'bg-emerald-500/5 border-emerald-500/20 opacity-60' 
+                                                                        : 'bg-white/[0.02] border-white/5 hover:border-white/10'
+                                                                } ${hasGlitch ? 'border-red-500/50 bg-red-500/10' : ''}`}
+                                                            >
+                                                                {/* Overlay de Cooldown */}
+                                                                {isCooldown && !isCompleted && !hasGlitch && (
+                                                                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                                                                        <span className="text-[10px] font-black text-white tracking-[0.3em] animate-pulse">
+                                                                            [ RECALIBRATING UPLINK... ]
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Texto de Erro de Glitch */}
+                                                                {hasGlitch && (
+                                                                    <div className="absolute top-2 right-4 z-20">
+                                                                        <span className="text-[8px] font-black text-red-500 tracking-tighter">
+                                                                            [ UPLINK FAILED: XP REVERTED ]
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="flex items-start justify-between relative z-10">
+                                                                    <div className="flex-1 pr-8">
+                                                                        <div className="flex items-center gap-2 mb-2">
+                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border tracking-tighter uppercase ${
+                                                                                isCompleted ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-500'
+                                                                            }`}>
+                                                                                {quest.type}
+                                                                            </span>
+                                                                            <span className="text-[9px] font-mono text-slate-600 uppercase tracking-tighter">
+                                                                                Setor: {quest.id.slice(0, 8)}
+                                                                            </span>
+                                                                        </div>
+                                                                        <h3 className={`text-sm font-black tracking-tight mb-2 ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-200 group-hover:text-cyan-400 transition-colors'}`}>
+                                                                            {quest.title}
+                                                                        </h3>
+                                                                        <p className="text-[11px] text-slate-500 leading-relaxed font-medium mb-4">
+                                                                            {quest.description}
+                                                                        </p>
+                                                                        
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
+                                                                                <span className="text-[10px] font-black text-cyan-500 italic">+{quest.xp_reward} XP</span>
+                                                                            </div>
+                                                                            <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{quest.stack_name}</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <button
+                                                                        onClick={() => handleCompleteQuest(quest.id, quest.xp_reward, quest.stack_name || '', quest.stack_id || '')}
+                                                                        disabled={isCompleted || isPending || isCooldown}
+                                                                        className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all ${
+                                                                            isCompleted 
+                                                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
+                                                                                : 'bg-white/5 border-white/10 text-slate-600 hover:border-cyan-500/50 hover:text-cyan-400 hover:scale-110 active:scale-95'
+                                                                        } disabled:cursor-not-allowed`}
+                                                                    >
+                                                                        {isCompleted ? (
+                                                                            <Check className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
+                                                                        ) : (
+                                                                            <Zap className="w-4 h-4 ml-0.5 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
+                                                                        )}
+                                                                    </button>
+                                                                </div>
+                                                            </motion.div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </Suspense>
                                 </div>
                             )}
                         </motion.div>
@@ -685,7 +726,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
             {/* MODAL DE DETALHES DA QUEST */}
             <QuestDetailModal
                 userId={userId}
-                quest={selectedQuest}
+                quest={selectedQuest as any}
                 onClose={() => setSelectedQuest(null)}
                 onComplete={handleCompleteQuest}
             />
@@ -693,7 +734,7 @@ export default function IdentityMatrix({ userId, isActive = true }: IdentityMatr
             {/* FLOATING XP TOASTS */}
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[100]">
                 <AnimatePresence>
-                    {xpToasts.map((toast) => (
+                    {xpToasts.map((toast: any) => (
                         <motion.div
                             key={toast.id}
                             initial={{ opacity: 0, scale: 0.5, y: 0 }}

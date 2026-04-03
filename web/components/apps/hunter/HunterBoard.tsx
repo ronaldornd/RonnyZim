@@ -25,6 +25,9 @@ import {
 import InterviewSimulator from './InterviewSimulator';
 import TargetDossier from './TargetDossier';
 import MarketOracle from './MarketOracle';
+import { SearchTerminal } from './SearchTerminal';
+import { JobCardActive } from './JobCardActive';
+import { useJobScanner } from '@/hooks/useJobScanner';
 
 export interface HunterInsight {
     id: string;
@@ -70,6 +73,16 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
 
     // Styled Delete Confirmation
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
+    // [Phase 5] Active Scanner Integration
+    const [viewMode, setViewMode] = useState<'DATABASE' | 'SCANNER'>('DATABASE');
+    const { 
+        isScanning, 
+        scannedJobs, 
+        statusMessage, 
+        startScan, 
+        saveToDossier 
+    } = useJobScanner();
 
     const supabase = createClient();
 
@@ -233,22 +246,37 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                             Mural do Caçador
                         </h2>
 
-                        {/* Tabs de Navegação */}
                         <nav className="flex items-center gap-4 mt-2" aria-label="Abas do Mural">
                             <button
                                 onClick={() => setActiveTab('Targets')}
-                                aria-current={activeTab === 'Targets' ? 'page' : undefined}
                                 className={`text-xs uppercase tracking-widest font-bold py-1 px-2 rounded-md transition-all ${activeTab === 'Targets' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'text-slate-500 hover:text-slate-300'}`}
                             >
                                 Alvos Adquiridos
                             </button>
                             <button
                                 onClick={() => setActiveTab('Profile')}
-                                aria-current={activeTab === 'Profile' ? 'page' : undefined}
                                 className={`text-xs uppercase tracking-widest font-bold py-1 px-2 rounded-md transition-all ${activeTab === 'Profile' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'}`}
                             >
                                 Painel de Currículos
                             </button>
+                            
+                            {activeTab === 'Targets' && (
+                                <div className="flex items-center gap-1 ml-4 border-l border-white/10 pl-4">
+                                    <button
+                                        onClick={() => setViewMode('DATABASE')}
+                                        className={`text-[9px] uppercase tracking-widest font-bold py-1 px-2 rounded-md transition-all ${viewMode === 'DATABASE' ? 'text-red-400' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                    >
+                                        Adquiridos [{targetJobs.length}]
+                                    </button>
+                                    <span className="text-zinc-800">/</span>
+                                    <button
+                                        onClick={() => setViewMode('SCANNER')}
+                                        className={`text-[9px] uppercase tracking-widest font-bold py-1 px-2 rounded-md transition-all ${viewMode === 'SCANNER' ? 'text-red-400' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                    >
+                                        Varredura [{scannedJobs.length}]
+                                    </button>
+                                </div>
+                            )}
                         </nav>
                     </div>
                 </div>
@@ -275,89 +303,104 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                             className="h-full flex flex-col"
                         >
                             {activeTab === 'Targets' && (
-                                <div className="h-full flex flex-col">
-                                    {targetJobs.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-red-500/20 rounded-[2.5rem] bg-red-500/5 p-12">
-                                            <Target className="w-16 h-16 text-red-500/40 mb-4" />
-                                            <h2 className="text-xl font-bold text-red-400 tracking-wider text-center">NENHUM ALVO ATIVO</h2>
-                                            <p className="text-slate-400 mt-4 font-mono text-[10px] text-center uppercase tracking-widest leading-relaxed">
-                                                Transmita arquivos de Descrição de Vagas para a Vault e acione o protocolo HunterZim.
-                                            </p>
-                                        </div>
+                                <div className="h-full flex flex-col gap-4">
+                                    {/* [Phase 5] Search Terminal Fixed at Top */}
+                                    <SearchTerminal 
+                                        onScan={(q) => {
+                                            setViewMode('SCANNER');
+                                            startScan(q);
+                                        }}
+                                        isScanning={isScanning}
+                                        statusMessage={statusMessage}
+                                    />
+
+                                    {viewMode === 'DATABASE' ? (
+                                        targetJobs.length === 0 ? (
+                                            <div className="flex-1 flex flex-col items-center justify-center border border-red-500/10 rounded-[2.5rem] bg-red-500/[0.02] p-8">
+                                                <Target className="w-16 h-16 text-red-500/40 mb-4" />
+                                                <h2 className="text-xl font-bold text-red-400 tracking-wider text-center">NENHUM ALVO ATIVO</h2>
+                                                <p className="text-slate-400 mt-4 font-mono text-[10px] text-center uppercase tracking-widest leading-relaxed">
+                                                    Transmita arquivos de Descrição de Vagas para a Vault e acione o protocolo HunterZim.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex-1 flex flex-col gap-4 relative h-full">
+                                                {/* Job Card Display (Single) */}
+                                                <div className="flex-1 overflow-hidden relative">
+                                                    <AnimatePresence mode="wait">
+                                                        {targetJobs[currentIndex] && (
+                                                            <motion.div
+                                                                key={targetJobs[currentIndex].id}
+                                                                initial={{ opacity: 0, x: 100 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                exit={{ opacity: 0, x: -100 }}
+                                                                drag="x"
+                                                                dragConstraints={{ left: 0, right: 0 }}
+                                                                onDragEnd={(_, info) => {
+                                                                    if (info.offset.x > 100 && currentIndex > 0) {
+                                                                        setCurrentIndex(prev => prev - 1);
+                                                                    } else if (info.offset.x < -100 && currentIndex < targetJobs.length - 1) {
+                                                                        setCurrentIndex(prev => prev + 1);
+                                                                    }
+                                                                }}
+                                                                className="h-full cursor-grab active:cursor-grabbing"
+                                                            >
+                                                                <JobCard 
+                                                                    insight={targetJobs[currentIndex]} 
+                                                                    onSelect={(job: HunterInsight) => {
+                                                                        setSelectedJob(job);
+                                                                        setIsExpanded(true);
+                                                                    }} 
+                                                                    onDelete={deleteInsight}
+                                                                    onUpdateStatus={updateStatus}
+                                                                    openDocument={openDocument}
+                                                                    getScoreColor={getScoreColor}
+                                                                    getStatusIcon={getStatusIcon}
+                                                                    updatingId={updatingId}
+                                                                    onStartInterview={(job: HunterInsight) => {
+                                                                        setSelectedInterviewJob(job);
+                                                                        setIsInterviewOpen(true);
+                                                                    }}
+                                                                />
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            </div>
+                                        )
                                     ) : (
-                                        <div className="flex-1 flex flex-col gap-4 relative h-full">
-                                            {/* Job Card Display (Single) */}
-                                            <div className="flex-1 overflow-hidden relative">
-                                                <AnimatePresence mode="wait">
-                                                    {targetJobs[currentIndex] && (
-                                                        <motion.div
-                                                            key={targetJobs[currentIndex].id}
-                                                            initial={{ opacity: 0, x: 100 }}
-                                                            animate={{ opacity: 1, x: 0 }}
-                                                            exit={{ opacity: 0, x: -100 }}
-                                                            drag="x"
-                                                            dragConstraints={{ left: 0, right: 0 }}
-                                                            onDragEnd={(_, info) => {
-                                                                if (info.offset.x > 100 && currentIndex > 0) {
-                                                                    setCurrentIndex(prev => prev - 1);
-                                                                } else if (info.offset.x < -100 && currentIndex < targetJobs.length - 1) {
-                                                                    setCurrentIndex(prev => prev + 1);
-                                                                }
-                                                            }}
-                                                            className="h-full cursor-grab active:cursor-grabbing"
-                                                        >
-                                                            <JobCard 
-                                                                insight={targetJobs[currentIndex]} 
-                                                                onSelect={(job: HunterInsight) => {
-                                                                    setSelectedJob(job);
-                                                                    setIsExpanded(true);
-                                                                }} 
-                                                                onDelete={deleteInsight}
-                                                                onUpdateStatus={updateStatus}
-                                                                openDocument={openDocument}
-                                                                getScoreColor={getScoreColor}
-                                                                getStatusIcon={getStatusIcon}
-                                                                updatingId={updatingId}
-                                                                onStartInterview={(job: HunterInsight) => {
-                                                                    setSelectedInterviewJob(job);
-                                                                    setIsInterviewOpen(true);
+                                        /* [Phase 5] Scanner Mode Results */
+                                        <div className="flex-1 overflow-hidden flex flex-col">
+                                            {scannedJobs.length === 0 && !isScanning ? (
+                                                <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-[2.5rem] bg-white/[0.01] p-12">
+                                                    <Activity className="w-12 h-12 text-zinc-800 mb-4" />
+                                                    <span className="text-[10px] font-mono font-black text-zinc-600 uppercase tracking-widest">Aguardando Varredura...</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                                                    <div className="grid gap-4 pb-12">
+                                                        {scannedJobs.map((job) => (
+                                                            <JobCardActive 
+                                                                key={job.id} 
+                                                                job={job} 
+                                                                onSave={async (j: any) => {
+                                                                    const success = await saveToDossier(j);
+                                                                    if (success) {
+                                                                        fetchInsights(); // Reload from DB
+                                                                        return true;
+                                                                    }
+                                                                    return false;
                                                                 }}
                                                             />
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-
-                                            {/* Navigation Controls */}
-                                            <div className="flex items-center justify-between px-4 py-2 bg-white/[0.02] rounded-2xl border border-white/5">
-                                                <button
-                                                    onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
-                                                    disabled={currentIndex === 0}
-                                                    className={`p-2 rounded-xl transition-all ${currentIndex === 0 ? 'text-zinc-800' : 'text-red-500 hover:bg-red-500/10 active:scale-95'}`}
-                                                >
-                                                    <ChevronDown className="w-5 h-5 rotate-90" />
-                                                </button>
-                                                <div className="flex flex-col items-center">
-                                                    <span className="text-[10px] font-mono font-black text-zinc-500 uppercase tracking-widest">
-                                                        Alvo {currentIndex + 1} de {targetJobs.length}
-                                                    </span>
-                                                    <div className="flex gap-1 mt-2">
-                                                        {targetJobs.map((_, idx) => (
-                                                            <div 
-                                                                key={idx} 
-                                                                className={`h-1 rounded-full transition-all ${idx === currentIndex ? 'w-4 bg-red-500' : 'w-1 bg-zinc-800'}`} 
-                                                            />
                                                         ))}
+                                                        {isScanning && scannedJobs.length < 5 && (
+                                                            <div className="h-64 rounded-[2.5rem] bg-red-500/[0.02] border border-red-500/10 animate-pulse flex items-center justify-center">
+                                                                <Loader2 className="w-8 h-8 text-red-500/20 animate-spin" />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => setCurrentIndex(prev => Math.min(targetJobs.length - 1, prev + 1))}
-                                                    disabled={currentIndex === targetJobs.length - 1}
-                                                    className={`p-2 rounded-xl transition-all ${currentIndex === targetJobs.length - 1 ? 'text-zinc-800' : 'text-red-500 hover:bg-red-500/10 active:scale-95'}`}
-                                                >
-                                                    <ChevronDown className="w-5 h-5 -rotate-90" />
-                                                </button>
-                                            </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -379,7 +422,6 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                     </AnimatePresence>
                 </motion.div>
 
-                {/* RIGHT PANEL: SIMULATOR OR MARKET ORACLE / HEATMAP (8/12) - Hidden if Profile */}
                 <AnimatePresence>
                     {activeTab !== 'Profile' && (
                         <motion.div 
@@ -389,64 +431,64 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                             className="h-full overflow-hidden p-4 bg-black/10 backdrop-blur-[2px] hidden md:block border-l border-white/5"
                         >
-                    <AnimatePresence mode="wait">
-                        {isInterviewOpen ? (
-                            <motion.div
-                                key="simulator"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="h-full"
-                            >
-                                <InterviewSimulator 
-                                    isOpen={isInterviewOpen}
-                                    onClose={() => setIsInterviewOpen(false)}
-                                    jobId={selectedInterviewJob?.id || ''}
-                                    jobDescription={selectedInterviewJob?.summary || ''}
-                                    gapAnalysis={selectedInterviewJob?.gap_analysis || {}}
-                                    userName={userName}
-                                />
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="oracle"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="h-full flex flex-col gap-2"
-                            >
-                                <div className="p-2 rounded-xl border border-white/5 bg-white/5 backdrop-blur-sm flex-1 flex flex-col overflow-hidden">
-                                    <h3 className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 uppercase flex items-center gap-2 mb-2">
-                                        <Cpu className="w-4 h-4 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]" />
-                                        Nexus de Inteligência de Mercado
-                                    </h3>
-                                    <div className="flex-1 overflow-hidden">
-                                        <MarketOracle userId={userId} />
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-6 shrink-0">
-                                    <motion.button
-                                        initial={{ backgroundColor: 'rgba(239, 68, 68, 0.05)' }}
-                                        whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => setIsInsightsModalOpen(true)}
-                                        className="p-6 rounded-2xl border border-white/5 backdrop-blur-md text-left transition-all hover:border-red-500/30 group"
+                            <AnimatePresence mode="wait">
+                                {isInterviewOpen ? (
+                                    <motion.div
+                                        key="simulator"
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        className="h-full"
                                     >
-                                        <div className="text-3xl font-black text-red-500 tracking-tighter flex items-center justify-between">
-                                            {insights.length}
-                                            <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <InterviewSimulator 
+                                            isOpen={isInterviewOpen}
+                                            onClose={() => setIsInterviewOpen(false)}
+                                            jobId={selectedInterviewJob?.id || ''}
+                                            jobDescription={selectedInterviewJob?.summary || ''}
+                                            gapAnalysis={selectedInterviewJob?.gap_analysis || {}}
+                                            userName={userName}
+                                        />
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="oracle"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="h-full flex flex-col gap-2"
+                                    >
+                                        <div className="p-2 rounded-xl border border-white/5 bg-white/5 backdrop-blur-sm flex-1 flex flex-col overflow-hidden">
+                                            <h3 className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 uppercase flex items-center gap-2 mb-2">
+                                                <Cpu className="w-4 h-4 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]" />
+                                                Nexus de Inteligência de Mercado
+                                            </h3>
+                                            <div className="flex-1 overflow-hidden">
+                                                <MarketOracle userId={userId} />
+                                            </div>
                                         </div>
-                                        <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mt-2">Insights Totais</div>
-                                    </motion.button>
-                                    <div className="p-6 rounded-2xl border border-white/5 bg-cyan-500/5 backdrop-blur-md">
-                                        <div className="text-3xl font-black text-cyan-400 tracking-tighter">{insights.filter(i => i.status === 'Applied').length}</div>
-                                        <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mt-2">Candidaturas Ativas</div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </motion.div>
+                                        
+                                        <div className="grid grid-cols-2 gap-6 shrink-0">
+                                            <motion.button
+                                                initial={{ backgroundColor: 'rgba(239, 68, 68, 0.05)' }}
+                                                whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                                                whileTap={{ scale: 0.98 }}
+                                                onClick={() => setIsInsightsModalOpen(true)}
+                                                className="p-6 rounded-2xl border border-white/5 backdrop-blur-md text-left transition-all hover:border-red-500/30 group"
+                                            >
+                                                <div className="text-3xl font-black text-red-500 tracking-tighter flex items-center justify-between">
+                                                    {insights.length}
+                                                    <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                                <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mt-2">Insights Totais</div>
+                                            </motion.button>
+                                            <div className="p-6 rounded-2xl border border-white/5 bg-cyan-500/5 backdrop-blur-md">
+                                                <div className="text-3xl font-black text-cyan-400 tracking-tighter">{insights.filter(i => i.status === 'Applied').length}</div>
+                                                <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mt-2">Candidaturas Ativas</div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
                     )}
                 </AnimatePresence>
 
