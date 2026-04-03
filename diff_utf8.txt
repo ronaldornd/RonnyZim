@@ -1,0 +1,405 @@
+﻿diff --git a/.planning/ROADMAP.md b/.planning/ROADMAP.md
+index fd4b7f8..bfa5118 100644
+--- a/.planning/ROADMAP.md
++++ b/.planning/ROADMAP.md
+@@ -27,4 +27,4 @@ Plano de fases para a constru├º├úo da infraestrutura inteligente.
+ - [ ] **Valida├º├úo Final**: Auditoria de seguran├ºa (RLS) e performance (Lighthouse).
+ 
+ ---
+-*Last updated: 2026-03-30*
++*Last updated: 2026-04-01 after Phase 3 Planning*
+diff --git a/web/app/api/analyze/route.ts b/web/app/api/analyze/route.ts
+index 18e5955..71efa2a 100644
+--- a/web/app/api/analyze/route.ts
++++ b/web/app/api/analyze/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from 'next/server';
+ import { GoogleGenAI, Type, Schema } from '@google/genai';
+-import { createAdminClient } from '@/lib/supabase/client';
++import { createAdminClient } from '@/lib/supabase/admin';
+ 
+ // Initialize the Google Gen AI client explicitly forcing GEMINI_API_KEY
+ // to prevent collisions with GOOGLE_API_KEY which might expect OAuth.
+diff --git a/web/app/api/chat/route.ts b/web/app/api/chat/route.ts
+index 5712d08..5be59fa 100644
+--- a/web/app/api/chat/route.ts
++++ b/web/app/api/chat/route.ts
+@@ -1,6 +1,6 @@
+ import { GoogleGenAI, Type, Schema } from '@google/genai';
+ import { declareKnowledgeGapFunctionDeclaration, createDailyQuestFunctionDeclaration } from '@/lib/active-learning/tools';
+-import { createAdminClient } from '@/lib/supabase/client';
++import { createAdminClient } from '@/lib/supabase/admin';
+ 
+ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+ 
+diff --git a/web/app/api/clipper/route.ts b/web/app/api/clipper/route.ts
+index fd35f6a..03067c7 100644
+--- a/web/app/api/clipper/route.ts
++++ b/web/app/api/clipper/route.ts
+@@ -1,4 +1,4 @@
+-import { createAdminClient } from '@/lib/supabase/client';
++import { createAdminClient } from '@/lib/supabase/admin';
+ import { GoogleGenAI, Type, Schema } from '@google/genai';
+ 
+ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+diff --git a/web/app/api/oracle/generate-quests/route.ts b/web/app/api/oracle/generate-quests/route.ts
+index 5b71138..86367e8 100644
+--- a/web/app/api/oracle/generate-quests/route.ts
++++ b/web/app/api/oracle/generate-quests/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from 'next/server';
+ import { GoogleGenAI, Type, Schema } from '@google/genai';
+-import { createAdminClient } from '@/lib/supabase/client';
++import { createAdminClient } from '@/lib/supabase/admin';
+ 
+ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+ 
+diff --git a/web/app/api/oracle/trends/route.ts b/web/app/api/oracle/trends/route.ts
+index 9d60408..9443b5b 100644
+--- a/web/app/api/oracle/trends/route.ts
++++ b/web/app/api/oracle/trends/route.ts
+@@ -1,5 +1,5 @@
+ import { NextResponse } from 'next/server';
+-import { createAdminClient } from '@/lib/supabase/client';
++import { createAdminClient } from '@/lib/supabase/admin';
+ 
+ export async function POST(req: Request) {
+     try {
+diff --git a/web/app/api/quests/route.ts b/web/app/api/quests/route.ts
+index c6df3f8..d5728d4 100644
+--- a/web/app/api/quests/route.ts
++++ b/web/app/api/quests/route.ts
+@@ -1,5 +1,5 @@
+ import { NextResponse } from 'next/server';
+-import { createAdminClient } from '@/lib/supabase/client';
++import { createAdminClient } from '@/lib/supabase/admin';
+ 
+ export async function GET(req: Request) {
+     try {
+diff --git a/web/app/api/quests/validate/route.ts b/web/app/api/quests/validate/route.ts
+index 834e5b9..9b1dced 100644
+--- a/web/app/api/quests/validate/route.ts
++++ b/web/app/api/quests/validate/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from 'next/server';
+ import { GoogleGenAI, Type, Schema } from '@google/genai';
+-import { createAdminClient } from '@/lib/supabase/client';
++import { createAdminClient } from '@/lib/supabase/admin';
+ import { getAstralXpMultiplier } from '@/lib/astral';
+ 
+ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+diff --git a/web/app/api/radar/route.ts b/web/app/api/radar/route.ts
+index d0066fc..d520a31 100644
+--- a/web/app/api/radar/route.ts
++++ b/web/app/api/radar/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from 'next/server';
+ import { GoogleGenAI, Type, Schema } from '@google/genai';
+-import { createAdminClient } from '@/lib/supabase/client';
++import { createAdminClient } from '@/lib/supabase/admin';
+ 
+ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+ 
+diff --git a/web/app/layout.tsx b/web/app/layout.tsx
+index 9907ade..6598b48 100644
+--- a/web/app/layout.tsx
++++ b/web/app/layout.tsx
+@@ -1,3 +1,4 @@
++/** HMR_CACHE_RESET: 2026-04-01-T17:52 */
+ import type { Metadata } from 'next';
+ import { Fira_Code, Share_Tech_Mono } from 'next/font/google';
+ import IdentitySchema from '@/components/seo/IdentitySchema';
+diff --git a/web/components/apps/genesis/GenesisMonolith.tsx b/web/components/apps/genesis/GenesisMonolith.tsx
+index bd948ae..9756fcd 100644
+--- a/web/components/apps/genesis/GenesisMonolith.tsx
++++ b/web/components/apps/genesis/GenesisMonolith.tsx
+@@ -177,82 +177,84 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
+ 
+                 <form onSubmit={handleSubmit} className="space-y-4">
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+-
+-                        {/* Sec. 1: Bio-Data */}
+-                        <div className="col-span-1 md:col-span-1 border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-green-500/30 transition-colors">
+-                            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><Fingerprint className="w-24 h-24" /></div>
+-                            <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
+-                                <UserCircle2 className="w-4 h-4 text-green-400" /> Dados Biol├│gicos
+-                            </h2>
+-                            <div className="space-y-3">
+-                                <div>
+-                                    <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Nome Completo</label>
+-                                    <input required type="text" value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" placeholder="Ronaldo..." />
+-                                </div>
+-                                <div className="grid grid-cols-2 gap-2">
++                        
++                        {/* Coluna 1 (1/3) - Bio e Log├¡stica */}
++                        <div className="md:col-span-1 space-y-4">
++                            {/* Sec. 1: Bio-Data */}
++                            <div className="border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-green-500/30 transition-colors">
++                                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><Fingerprint className="w-24 h-24" /></div>
++                                <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
++                                    <UserCircle2 className="w-4 h-4 text-green-400" /> Dados Biol├│gicos
++                                </h2>
++                                <div className="space-y-3">
+                                     <div>
+-                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-green-400" /> Data Natal</label>
+-                                        <input required type="date" value={(formData.birthDateTime || '').split('T')[0]} onChange={(e) => handleInputChange('birthDateTime', `${e.target.value}T${(formData.birthDateTime || '').split('T')[1] || '00:00'}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" />
++                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Nome Completo</label>
++                                        <input required type="text" value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" placeholder="Ronaldo..." />
++                                    </div>
++                                    <div className="grid grid-cols-2 gap-2">
++                                        <div>
++                                            <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-green-400" /> Data Natal</label>
++                                            <input required type="date" value={(formData.birthDateTime || '').split('T')[0]} onChange={(e) => handleInputChange('birthDateTime', `${e.target.value}T${(formData.birthDateTime || '').split('T')[1] || '00:00'}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" />
++                                        </div>
++                                        <div>
++                                            <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-teal-400" /> Hora Natal</label>
++                                            <input type="time" value={(formData.birthDateTime || '').split('T')[1] || ''} onChange={(e) => handleInputChange('birthDateTime', `${(formData.birthDateTime || '').split('T')[0]}T${e.target.value}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: 14:30" />
++                                        </div>
+                                     </div>
+                                     <div>
+-                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-teal-400" /> Hora Natal</label>
+-                                        <input type="time" value={(formData.birthDateTime || '').split('T')[1] || ''} onChange={(e) => handleInputChange('birthDateTime', `${(formData.birthDateTime || '').split('T')[0]}T${e.target.value}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: 14:30" />
++                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Globe2 className="w-3 h-3 text-teal-400" /> Cidade Natal</label>
++                                        <input required type="text" value={formData.birthCity} onChange={(e) => handleInputChange('birthCity', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: S├úo Paulo, SP, Brasil" />
+                                     </div>
+                                 </div>
+-                                <div>
+-                                    <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Globe2 className="w-3 h-3 text-teal-400" /> Cidade Natal</label>
+-                                    <input required type="text" value={formData.birthCity} onChange={(e) => handleInputChange('birthCity', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: S├úo Paulo, SP, Brasil" />
+-                                </div>
+                             </div>
+ 
+-                        </div>
+-
+-                        {/* Sec. 2 & 3: Logistics + Tech Profile */}
+-                        <div className="col-span-1 md:col-span-2 space-y-4">
+-
+                             {/* Sec. 2: Logistics */}
+                             <div className="border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-blue-500/30 transition-colors">
+                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><MapPin className="w-24 h-24" /></div>
+                                 <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
+-                                    <MapPin className="w-4 h-4 text-blue-400" /> Log├¡stica Pessoal (Alvo p/ HunterZim)
++                                    <MapPin className="w-4 h-4 text-blue-400" /> Log├¡stica Pessoal
+                                 </h2>
+                                 <div>
+                                     <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Localiza├º├úo Atual</label>
+-                                    <input required type="text" value={formData.currentLocation} onChange={(e) => handleInputChange('currentLocation', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm" placeholder="Sua cidade atual e limita├º├Áes de deslocamento..." />
++                                    <input required type="text" value={formData.currentLocation} onChange={(e) => handleInputChange('currentLocation', e.target.value)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm" placeholder="Sua cidade e mobilidade..." />
+                                 </div>
+                             </div>
++                        </div>
+ 
+-                            {/* Sec. 3: Tech Profile */}
+-                            <div className="border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-amber-500/30 transition-colors">
++                        {/* Coluna 2 (2/3) - Perfil T├®cnico */}
++                        <div className="md:col-span-2">
++                            <div className="h-full border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-amber-500/30 transition-colors">
+                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><Cpu className="w-24 h-24" /></div>
+                                 <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
+                                     <TerminalSquare className="w-4 h-4 text-amber-400" /> Perfil T├®cnico
+                                 </h2>
+-                                <div className="md:col-span-2">
+-                                    <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Main Stacks (Mastery RPG)</label>
+-                                    <div className="w-full">
+-                                        <StackSelector
+-                                            selectedStacks={formData.mainStacks}
+-                                            onChange={(stacks) => handleInputChange('mainStacks', stacks as any)}
++                                <div className="space-y-4">
++                                    <div>
++                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Main Stacks (Mastery RPG)</label>
++                                        <div className="w-full">
++                                            <StackSelector
++                                                selectedStacks={formData.mainStacks}
++                                                onChange={(stacks) => handleInputChange('mainStacks', stacks as any)}
++                                                disabled={isSubmitting}
++                                            />
++                                        </div>
++                                    </div>
++                                    <div className="mt-3">
++                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Briefcase className="w-3 h-3 text-amber-400" /> Senioridade Atual</label>
++                                        <select
++                                            value={formData.seniority}
++                                            onChange={(e) => handleInputChange('seniority', e.target.value)}
+                                             disabled={isSubmitting}
+-                                        />
++                                            className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all text-sm appearance-none"
++                                        >
++                                            <option value="Junior">Junior</option>
++                                            <option value="Pleno">Pleno</option>
++                                            <option value="Senior">Senior</option>
++                                            <option value="Tech Lead">Tech Lead</option>
++                                            <option value="Staff/Principal">Staff / Principal / Arquitetura</option>
++                                        </select>
+                                     </div>
+                                 </div>
+-                                <div className="md:col-span-2 mt-3">
+-                                    <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Briefcase className="w-3 h-3 text-amber-400" /> Senioridade Atual</label>
+-                                    <select
+-                                        value={formData.seniority}
+-                                        onChange={(e) => handleInputChange('seniority', e.target.value)}
+-                                        disabled={isSubmitting}
+-                                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all text-sm appearance-none"
+-                                    >
+-                                        <option value="Junior">Junior</option>
+-                                        <option value="Pleno">Pleno</option>
+-                                        <option value="Senior">Senior</option>
+-                                        <option value="Tech Lead">Tech Lead</option>
+-                                        <option value="Staff/Principal">Staff / Principal / Arquitetura</option>
+-                                    </select>
+-                                </div>
+                             </div>
+                         </div>
+                     </div>
+diff --git a/web/components/apps/settings/SettingsApp.tsx b/web/components/apps/settings/SettingsApp.tsx
+index b694664..51835cc 100644
+--- a/web/components/apps/settings/SettingsApp.tsx
++++ b/web/components/apps/settings/SettingsApp.tsx
+@@ -2,8 +2,9 @@
+ 
+ import React, { useState, useEffect } from 'react';
+ import { motion } from 'framer-motion';
+-import { Settings2, Cpu, Save, Loader2, AlertCircle, Mic } from 'lucide-react';
+ import { createClient } from '@/lib/supabase/browser';
++import { useBootSequence } from '@/lib/hooks/useBootSequence';
++import { Settings2, Cpu, Save, Loader2, AlertCircle, Mic, RefreshCw, HelpCircle } from 'lucide-react';
+ 
+ interface ModelInfo {
+     id: string;
+@@ -20,6 +21,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
+     const [saving, setSaving] = useState(false);
+     const [error, setError] = useState<string | null>(null);
+     const [successMsg, setSuccessMsg] = useState<string | null>(null);
++    const { resetBoot } = useBootSequence();
+ 
+ 
+     useEffect(() => {
+@@ -230,6 +232,27 @@ export default function SettingsApp({ userId }: { userId: string }) {
+                         </button>
+                     </div>
+                 </section>
++
++                <section className="bg-zinc-950 border border-blue-500/10 rounded-2xl p-6 mb-20">
++                    <div className="flex items-center gap-3 mb-4">
++                        <HelpCircle className="text-yellow-400 w-6 h-6" />
++                        <h2 className="text-xl font-semibold text-white uppercase tracking-tighter">System Lifecycle</h2>
++                    </div>
++
++                    <p className="text-sm text-zinc-400 mb-6 font-mono leading-relaxed">
++                        Execute opera├º├Áes de sistema cr├¡ticas. Reiniciar o tutorial apagar├í o flag de "visto" do onboarding local.
++                    </p>
++
++                    <div className="flex flex-col sm:flex-row gap-4">
++                        <button
++                            onClick={resetBoot}
++                            className="bg-zinc-900 hover:bg-zinc-800 border border-white/5 text-zinc-400 px-6 py-4 rounded-xl font-mono text-xs uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 group"
++                        >
++                            <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
++                            Reiniciar Tutorial (Boot)
++                        </button>
++                    </div>
++                </section>
+             </motion.div>
+         </div>
+     );
+diff --git a/web/components/auth/AuthGuard.tsx b/web/components/auth/AuthGuard.tsx
+index 3bb085b..df5713e 100644
+--- a/web/components/auth/AuthGuard.tsx
++++ b/web/components/auth/AuthGuard.tsx
+@@ -4,11 +4,15 @@ import React, { useEffect, useState } from 'react';
+ import { createClient } from '@/lib/supabase/browser';
+ import LockScreen from './LockScreen';
+ import UpdatePasswordScreen from './UpdatePasswordScreen';
++import { useBootSequence } from '@/lib/hooks/useBootSequence';
++import BootSequence from '../onboarding/BootSequence';
++import { AnimatePresence, motion } from 'framer-motion';
+ 
+ export default function AuthGuard({ children }: { children: React.ReactNode }) {
+     const [session, setSession] = useState<any>(null);
+     const [loading, setLoading] = useState(true);
+     const [isRecovering, setIsRecovering] = useState(false);
++    const { isBootComplete, completeBoot } = useBootSequence();
+     const supabase = createClient();
+ 
+     useEffect(() => {
+@@ -40,36 +44,50 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
+         return () => subscription.unsubscribe();
+     }, [supabase]);
+ 
+-    // Enquanto verifica a mem├│ria/cookies...
+-    if (loading) {
+-        return (
+-            <div className="h-screen w-full flex items-center justify-center bg-[#020202]">
+-                <div className="w-4 h-4 rounded-full bg-white/20 animate-ping" />
+-            </div>
+-        );
+-    }
++    if (isBootComplete === null) return (
++        <div className="h-screen w-full bg-black flex items-center justify-center">
++            <div className="w-1 h-1 bg-white/20 animate-pulse" />
++        </div>
++    );
+ 
+-    // Intercepta o fluxo de recupera├º├úo de senha ANTES de renderizar o OS
+-    if (isRecovering) {
+-        return (
+-            <UpdatePasswordScreen
+-                onComplete={() => {
+-                    setIsRecovering(false);
+-                    if (typeof window !== 'undefined' && (window.location.hash || window.location.search)) {
+-                        window.history.replaceState(null, '', window.location.pathname);
+-                    }
+-                }}
+-            />
+-        );
+-    }
+-
+-    // Se nao tiver sess├úo, exibe a Tela de Bloqueio interativa
+-    if (!session) {
+-        return <LockScreen onLogin={() => {
+-            // O listener do onAuthStateChange far├í o re-render
+-        }} />;
+-    }
+-
+-    // Com sess├úo, passa a renderizar o SO
+-    return <>{children}</>;
++    return (
++        <AnimatePresence mode="wait">
++            {!isBootComplete ? (
++                <motion.div
++                    key="boot"
++                    initial={{ opacity: 1 }}
++                    exit={{ opacity: 0 }}
++                    transition={{ duration: 1 }}
++                >
++                    <BootSequence onComplete={completeBoot} />
++                </motion.div>
++            ) : (
++                <motion.div
++                    key="content"
++                    initial={{ opacity: 0 }}
++                    animate={{ opacity: 1 }}
++                    className="h-full w-full"
++                >
++                    {loading ? (
++                         <div className="h-screen w-full flex items-center justify-center bg-[#020202]">
++                            <div className="w-4 h-4 rounded-full bg-white/20 animate-ping" />
++                        </div>
++                    ) : isRecovering ? (
++                        <UpdatePasswordScreen
++                            onComplete={() => {
++                                setIsRecovering(false);
++                                if (typeof window !== 'undefined' && (window.location.hash || window.location.search)) {
++                                    window.history.replaceState(null, '', window.location.pathname);
++                                }
++                            }}
++                        />
++                    ) : !session ? (
++                        <LockScreen onLogin={() => {}} />
++                    ) : (
++                        children
++                    )}
++                </motion.div>
++            ) }
++        </AnimatePresence>
++    );
+ }

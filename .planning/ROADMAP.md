@@ -2,29 +2,31 @@
 
 Plano de fases para a construção da infraestrutura inteligente.
 
-## Fase 1: Fundação & Identidade (Milestone 1) — ✅ SHIPPED 2026-03-31
-> **Objetivo**: Conexão segura e esquema base implementados.
-- [x] **Configuração Supabase SSR**: Middleware e clientes server/browser integrados.
-- [x] **Migração de Esquema Base**: Tabelas core com RLS configuradas.
-- [x] **Integração LockScreen**: Vincular a UI de autenticação ao Supabase.
+## Milestones
 
-## Fase 2: Intelligence Bridge (Milestone 2) — ✅ SHIPPED 2026-04-01
-> **Objetivo**: Servidores MCP operacionais (Memory & Market).
-- [x] **MCP Memory Guardian**: Servidor MCP integrado ao `user_facts` do Supabase.
-- [x] **MCP Market Intelligence**: Rastreamento real-time de vagas via Tavily.
-- [x] **Comunicação Local (Stdio)**: Orquestração funcional via `npm run dev:mcp`.
+- ✅ **v1.0 Fundação** — Phase 1 (Shipped 2026-03-31)
+- ✅ **v2.0 Bridge** — Phase 2 (Shipped 2026-04-01)
+- ✅ **v3.0 Onboarding** — Phase 3 (Shipped 2026-04-03)
+- 🚧 **v4.0 Performance** — Phase 4 (In Progress)
 
-## 🚧 Fase 3: UX & Onboarding (Milestone 3) — EM PROGRESSO
-> **Objetivo**: Criar a primeira impressão imersiva e guia do usuário.
-- [ ] **Interactive Pre-Login Tour**: Implementar o walkthrough visual antes do LockScreen.
-- [ ] **Onboarding Gamificado**: Introduzir a mecânica de XP e progresso inicial.
-- [ ] **Transição de Auth**: Sincronizar o fim do tour com o gatilho de login/registro.
+## Phases
 
-## Fase 4: Otimização de Dados (Milestone 4)
+<details>
+<summary>✅ v1.0, v2.0 & v3.0 (Phases 1-3) — SHIPPED</summary>
+
+- [x] **Fase 1: Fundação & Identidade** — Configuração Supabase SSR, Migração de Esquema, LockScreen.
+- [x] **Fase 2: Intelligence Bridge** — MCP Memory Guardian, MCP Market Intelligence.
+- [x] **Fase 3: UX & Onboarding** — Visual Holográfico v2.0, Framer Motion, Tour Interativo.
+
+</details>
+
+## 🚧 Fase 4: Otimização de Dados (Milestone 4)
 > **Objetivo**: Performance extrema para UI de alta densidade (No-Scroll).
-- [ ] **Endpoints de Streaming**: Configurar Route Handlers para fazer stream de análises do Gemini.
-- [ ] **Paginação de Cursor**: Implementar a lógica de busca paginada para o HunterBoard e Dossiers.
+
+- [ ] **Data Optimization Framework**: Definir e implementar padrões de Server Actions v16.
+- [ ] **Suspense Boundaries Holográficos**: Substituir spinners por esqueletos textuais decrypting.
+- [ ] **Pre-fetching Preditivo**: Implementar lógica de cache antecipado para apps prioritários.
 - [ ] **Validação Final**: Auditoria de segurança (RLS) e performance (Lighthouse).
 
 ---
-*Last updated: 2026-04-01 after Phase 3 Planning*
+*Last updated: 2026-04-03 after Milestone 3 Completion*
