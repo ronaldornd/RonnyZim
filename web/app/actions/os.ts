@@ -55,7 +55,7 @@ export async function getProfileDataAction(userId: string) {
     .from('daily_quests')
     .select('*')
     .eq('user_id', userId)
-    .eq('status', 'active')
+    .eq('status', 'Active')
     .order('created_at', { ascending: false });
 
   // 6) Busca Histórico Operacional (Missões Concluídas)
@@ -63,7 +63,7 @@ export async function getProfileDataAction(userId: string) {
     .from('daily_quests')
     .select('*')
     .eq('user_id', userId)
-    .eq('status', 'completed')
+    .eq('status', 'Completed')
     .order('created_at', { ascending: false })
     .limit(3);
 
