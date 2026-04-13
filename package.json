@@ -11,6 +11,6 @@
   },
   "dependencies": {
     "@ai-sdk/rsc": "^2.0.145",
-    "axios": "^1.13.5"
+    "axios": "^1.15.0"
   }
 }
