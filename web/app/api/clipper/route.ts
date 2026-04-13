@@ -1,8 +1,9 @@
-import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { GoogleGenAI, Type, Schema } from '@google/genai';
+import { getAIProvider } from '@/lib/ai/ai-factory';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// O genAI agora é instanciado dinamicamente dentro do POST
 
 // Configurações de CORS (extensão envia user_id via header, não precisa de credentials)
 const corsHeaders = {
@@ -46,30 +47,33 @@ export async function POST(request: Request) {
             });
         }
 
-        // Estratégia de resolução de user_id (ordem de prioridade):
-        // 1. Header X-User-Id (enviado pela extensão quando disponível)
-        // 2. Body user_id (chamadas diretas)
-        // 3. Sessão autenticada via cookies (SSR/browser)
-        let finalUserId = request.headers.get('X-User-Id') || bodyUserId || null;
-
-        if (!finalUserId) {
-            try {
-                const supabaseSession = await createRouteHandlerClient();
-                const { data: { user } } = await supabaseSession.auth.getUser();
-                if (user) {
-                    finalUserId = user.id;
-                }
-            } catch {
-                // Sessão não disponível (extensão sem cookies)
+        // Estratégia de resolução de user_id Segura:
+        // Prioridade total para a sessão autenticada (cookies ou Authorization header)
+        let finalUserId: string | null = null;
+        
+        try {
+            const supabaseSession = await createRouteHandlerClient();
+            const { data: { user } } = await supabaseSession.auth.getSingleUser(); // Mais seguro que getUser
+            if (user) {
+                finalUserId = user.id;
             }
+        } catch (e) {
+            console.error('Clipper Auth Error:', e);
         }
 
         if (!finalUserId) {
-            return new Response(JSON.stringify({ error: 'Nenhum usuário autenticado. Faça login no RonnyZim OS antes de usar o Clipper.' }), {
+            return new Response(JSON.stringify({ 
+                error: 'Nenhum usuário autenticado encontrado.',
+                suggestion: 'Faça login no RonnyZim OS e tente novamente.' 
+            }), {
                 status: 401,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
+
+        // 1. Get AI Config via Factory
+        const { apiKey, modelId } = await getAIProvider(finalUserId);
+        const ai = new GoogleGenAI({ apiKey });
 
         const supabase = createAdminClient();
         
@@ -103,7 +107,7 @@ A vaga de origem era da URL: ${url}
 Regras: Retorne APENAS o JSON válido preenchido com a análise crua e real.`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: modelId,
             contents: `Analise a seguinte vaga capturada: \n\n TÍTULO: ${title}\n\n CONTEÚDO RAW (Scraped): \n${cleanContent}`,
             config: {
                 systemInstruction: systemInstruction,
