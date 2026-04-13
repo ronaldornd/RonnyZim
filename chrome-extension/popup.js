@@ -24,12 +24,49 @@ document.getElementById('extractBtn').addEventListener('click', async () => {
             throw new Error("Nenhum texto pôde ser extraído da página.");
         }
 
-        statusEl.textContent = `Enviando requisição CORS (Tamanho: ${data.content.length} bytes)...`;
+        statusEl.textContent = "Localizando sessão neural do RonnyZim OS...";
+
+        // Busca o user_id do Supabase executando script na aba do RonnyZim OS
+        let userId = null;
+        try {
+            const osTabs = await chrome.tabs.query({ url: 'http://localhost:3000/*' });
+            if (osTabs.length > 0) {
+                const osTab = osTabs[0];
+                const sessionResults = await chrome.scripting.executeScript({
+                    target: { tabId: osTab.id },
+                    func: () => {
+                        // Busca o user_id do Supabase auth no localStorage
+                        for (const key of Object.keys(localStorage)) {
+                            if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                                try {
+                                    const raw = localStorage.getItem(key);
+                                    const parsed = JSON.parse(raw);
+                                    return parsed?.user?.id || null;
+                                } catch { return null; }
+                            }
+                        }
+                        return null;
+                    }
+                });
+                userId = sessionResults[0]?.result;
+            }
+        } catch (e) {
+            console.warn("Falha ao buscar user_id do RonnyZim OS:", e);
+        }
+
+        if (!userId) {
+            throw new Error("Sessão não encontrada. Abra o RonnyZim OS (localhost:3000) e faça login primeiro.");
+        }
+
+        statusEl.textContent = `Sessão encontrada. Enviando (${data.content.length} bytes)...`;
 
         // Dispara ponte com o localhost Next.js
         const res = await fetch('http://localhost:3000/api/clipper', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-User-Id': userId
+            },
             body: JSON.stringify({
                 url: data.url,
                 title: data.title,

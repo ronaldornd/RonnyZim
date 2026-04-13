@@ -69,7 +69,7 @@ export function useBiorhythm(userId?: string) {
             phase = 'creative';
             phaseName = 'Creative Flow (Interface)';
             recommendedStack = CREATIVE_STACKS;
-            glowColor = 'shadow-purple-500/20 border-purple-500/30 text-purple-400';
+            glowColor = 'shadow-cyan-500/20 border-cyan-500/30 text-cyan-400';
         }
 
         // Modificadores Astrais
