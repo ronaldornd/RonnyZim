@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 
 export async function POST(req: Request) {
     try {
-        const { user_id } = await req.json();
+        const supabaseAuth = await createRouteHandlerClient();
+        const { data: { user } } = await supabaseAuth.auth.getUser();
 
-        if (!user_id) {
-            return NextResponse.json({ error: 'Missing user_id' }, { status: 400 });
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        const user_id = user.id;
 
         const supabase = createAdminClient();
 

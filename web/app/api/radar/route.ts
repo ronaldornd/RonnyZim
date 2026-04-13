@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { getAIProvider } from '@/lib/ai/ai-factory';
 
 const radarSchema = z.object({
@@ -11,10 +12,19 @@ const radarSchema = z.object({
 
 export async function POST(req: Request) {
     try {
-        const { user_id, company_name, job_description, strong_matches } = await req.json();
+        const supabase = await createRouteHandlerClient();
+        const { data: { user } } = await supabase.auth.getUser();
 
-        if (!company_name || !job_description || !user_id) {
-            return NextResponse.json({ error: 'Missing company_name, job_description or user_id' }, { status: 400 });
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const { company_name, job_description, strong_matches } = body;
+        const user_id = user.id;
+
+        if (!company_name || !job_description) {
+            return NextResponse.json({ error: 'Missing company_name or job_description' }, { status: 400 });
         }
 
         // 1. Get Dynamic Provider via AI Factory

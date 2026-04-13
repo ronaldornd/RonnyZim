@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { getAIProvider } from '@/lib/ai/ai-factory';
 
 // Strictly define the expected JSON structure using Zod for the AI SDK
@@ -21,10 +22,19 @@ const analysisSchema = z.object({
 
 export async function POST(req: Request) {
     try {
-        const { fileUrl, fileType, agentId, userId, fileName, userStacks, intent } = await req.json();
+        const supabase = await createRouteHandlerClient();
+        const { data: { user } } = await supabase.auth.getUser();
 
-        if (!fileUrl || !userId) {
-            return NextResponse.json({ error: 'Missing necessary parameters (fileUrl or userId)' }, { status: 400 });
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const { fileUrl, fileType, agentId, fileName, userStacks, intent } = body;
+        const userId = user.id; // Sempre usar o ID da sessão
+
+        if (!fileUrl) {
+            return NextResponse.json({ error: 'Missing necessary parameters (fileUrl)' }, { status: 400 });
         }
 
         // 1. Get Dynamic Provider via AI Factory

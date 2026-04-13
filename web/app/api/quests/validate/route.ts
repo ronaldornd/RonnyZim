@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { getAstralXpMultiplier } from '@/lib/astral';
 import { getAIProvider } from '@/lib/ai/ai-factory';
 import { GoogleGenAI, Schema, Type } from '@google/genai';
@@ -18,10 +19,18 @@ const validationSchema: Schema = {
 
 export async function POST(req: Request) {
     try {
-        const { questId, userId, proof } = await req.json();
+        const supabaseAuth = await createRouteHandlerClient();
+        const { data: { user } } = await supabaseAuth.auth.getUser();
 
-        if (!questId || !userId || !proof) {
-            return NextResponse.json({ error: 'Missing parameters (questId, userId, or proof)' }, { status: 400 });
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { questId, proof } = await req.json();
+        const userId = user.id;
+
+        if (!questId || !proof) {
+            return NextResponse.json({ error: 'Missing parameters (questId or proof)' }, { status: 400 });
         }
 
         const supabaseAdmin = createAdminClient();

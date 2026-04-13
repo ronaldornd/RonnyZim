@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 
 export async function GET(req: Request) {
     try {
-        const { searchParams } = new URL(req.url);
-        const userId = searchParams.get('userId');
+        const supabaseAuth = await createRouteHandlerClient();
+        const { data: { user } } = await supabaseAuth.auth.getUser();
 
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized, missing userId' }, { status: 401 });
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        const userId = user.id;
 
         const supabaseAdmin = createAdminClient();
 
@@ -35,11 +38,19 @@ import { XPService } from '@/lib/services/xp-service';
 
 export async function POST(req: Request) {
     try {
-        const supabaseAdmin = createAdminClient();
-        const { questId, userId } = await req.json();
+        const supabaseAuth = await createRouteHandlerClient();
+        const { data: { user } } = await supabaseAuth.auth.getUser();
 
-        if (!questId || !userId) {
-            return NextResponse.json({ error: 'Quest ID e User ID são obrigatórios' }, { status: 400 });
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const supabaseAdmin = createAdminClient();
+        const { questId } = await req.json();
+        const userId = user.id;
+
+        if (!questId) {
+            return NextResponse.json({ error: 'Quest ID é obrigatório' }, { status: 400 });
         }
 
         // 1. Validar e buscar a quest ativa

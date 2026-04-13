@@ -1,15 +1,26 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { getAIProvider } from '@/lib/ai/ai-factory';
+import { GoogleGenAI } from '@google/genai';
 
 // O genAI agora é instanciado dinamicamente dentro do POST
 
 export async function POST(req: Request) {
     try {
-        const { user_id, top_trends } = await req.json();
+        const supabaseAuth = await createRouteHandlerClient();
+        const { data: { user } } = await supabaseAuth.auth.getUser();
 
-        if (!user_id || !top_trends) {
-            return NextResponse.json({ error: 'Missing requirements' }, { status: 400 });
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const { top_trends } = body;
+        const user_id = user.id;
+
+        if (!top_trends) {
+            return NextResponse.json({ error: 'Missing top_trends' }, { status: 400 });
         }
 
         const supabase = createAdminClient();

@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { getAIProvider } from '@/lib/ai/ai-factory';
 
 const cvSchema: Schema = {
@@ -19,7 +20,16 @@ const cvSchema: Schema = {
 
 export async function POST(request: Request) {
     try {
-        const { job_requirements, strong_matches, missing_skills, user_id } = await request.json();
+        const supabaseAuth = await createRouteHandlerClient();
+        const { data: { user } } = await supabaseAuth.auth.getUser();
+
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        }
+
+        const body = await request.json();
+        const { job_requirements, strong_matches, missing_skills } = body;
+        const user_id = user.id;
 
         if (!job_requirements) {
             return new Response(JSON.stringify({ error: 'Missing requirements.' }), { status: 400 });
