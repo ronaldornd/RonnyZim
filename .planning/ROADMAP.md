@@ -9,7 +9,8 @@ Plano de fases para a construção da infraestrutura inteligente.
 - ✅ **v3.0 Onboarding** — Phase 3 (Shipped 2026-04-03)
 - ✅ **v4.0 Performance** — Phase 4 (Shipped 2026-04-03)
 - ✅ **v5.0 Hunter Expansion** — Phase 5 (Shipped 2026-04-03)
-- 🚧 **v6.0 Interview Simulator** — Phase 6 (In Progress)
+- ✅ **v6.0 Interview Simulator** — Phase 6 (Shipped 2026-04-03)
+- ✅ **v6.1 UI Polishing & Core Enforcements** — Phase 8 (Shipped 2026-04-13)
 
 ## Phases
 
@@ -25,6 +26,7 @@ Plano de fases para a construção da infraestrutura inteligente.
 
 - [x] **Fase 5: Expansão de Maestria (Hunter Board)** — Integrou MCP Tavily, streaming de vagas e match score Gemini. [SHIPPED 2026-04-03]
 - [x] **Fase 6: Listening Room (Simulador de Entrevista)** — Captura de áudio, análise multimodal Gemini, visualizador holográfico. [SHIPPED 2026-04-03]
+- [x] **Fase 8: UI Polishing & Neural Enforcements** — Onboarding mandatório, AgentCarousel, refatoração de Settings. [SHIPPED 2026-04-13]
 
 ---
-*Last updated: 2026-04-03 after Milestone 6.0 Completion*
+*Last updated: 2026-04-13 after Milestone 6.1 Completion*
