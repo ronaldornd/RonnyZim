@@ -185,13 +185,30 @@ function SkillNode({ data }: NodeProps) {
             )}
 
             <div style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                backgroundColor: astralBuff === 'buff' ? '#f59e0b' : d.color,
-                boxShadow: `0 0 ${glowSize}px ${astralBuff === 'buff' ? '#f59e0b' : d.color}`,
-                marginBottom: 2,
-            }} />
+                position: 'relative',
+                width: size * 0.5,
+                height: size * 0.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 4,
+            }}>
+                <div 
+                    style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        backgroundColor: astralBuff === 'buff' ? '#f59e0b' : d.color,
+                        boxShadow: `0 0 ${glowSize}px ${astralBuff === 'buff' ? '#f59e0b' : d.color}, 0 0 ${glowSize * 2}px ${astralBuff === 'buff' ? '#f59e0b88' : d.color + '88'}`,
+                    }}
+                />
+                <div style={{
+                    position: 'absolute',
+                    inset: -10,
+                    background: `radial-gradient(circle, ${astralBuff === 'buff' ? '#f59e0b1a' : d.color + '1a'}, transparent 70%)`,
+                    pointerEvents: 'none',
+                }} />
+            </div>
             <span style={{ fontSize: 9, color: astralBuff === 'buff' ? '#f59e0b' : d.color, fontFamily: 'monospace', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'center', padding: '0 6px' }}>
                 {d.label}
             </span>
@@ -283,6 +300,7 @@ function NeuralGraphInner({ stacks, quests, userName, totalLevel, userId }: Neur
                     level: stack.current_level,
                     xp: stack.current_xp,
                     color: brandColor,
+                    iconSlug: stack.global_stacks.icon_slug.toLowerCase(),
                     astralBuff: resonance,
                     multiplier,
                     onSelect: () => {
@@ -348,7 +366,7 @@ function NeuralGraphInner({ stacks, quests, userName, totalLevel, userId }: Neur
             {(astralState.moonSign || astralState.mercuryRetrograde || astralState.technicalFocus) && (
                 <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-2 max-w-[80%]">
                     {astralState.technicalFocus && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-mono leading-none">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono leading-none">
                             <Focus className="w-3 h-3" />
                             Foco Técnico Ativo
                         </div>

@@ -45,6 +45,8 @@ import {
 import IdentityPolygon from './IdentityPolygon';
 import { useOSStore } from '@/lib/store';
 import SkillScanCard from './SkillScanCard';
+import { genesisSyncAction } from '@/app/actions/genesis-sync';
+import { RefreshCw } from 'lucide-react';
 
 interface UserStack {
     id: string;
@@ -144,6 +146,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
     const [editTime, setEditTime] = useState('');
     const [editCity, setEditCity] = useState('');
     const [editSeniority, setEditSeniority] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const fetchIdentityStats = async () => {
         if (!userId || initialData) return; // Se já temos initialData (SWR), pula o fetch agressivo
@@ -151,6 +154,23 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
         const supabase = createClient();
         console.log("[IDENTITY] Fallback fetch activated");
         setLoading(false);
+    };
+
+    const handleNeuralSync = async () => {
+        if (isSyncing) return;
+        setIsSyncing(true);
+        triggerSFX('click');
+        try {
+            await genesisSyncAction(userId);
+            playSuccess();
+            // Refresh local data by triggering a reload or state reset
+            window.location.reload(); 
+        } catch (error) {
+            console.error('❌ Neural Sync Failed:', error);
+            playError();
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
     useEffect(() => {
@@ -511,10 +531,20 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                          </div>
  
                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
-                                                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                                     <UserCircle2 className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> PERFIL DE OPERAÇÃO
-                                                 </p>
+                                             <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 relative group/profile">
+                                                 <div className="flex items-center justify-between mb-3">
+                                                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                                                         <UserCircle2 className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> PERFIL DE OPERAÇÃO
+                                                     </p>
+                                                     <button 
+                                                        onClick={handleNeuralSync}
+                                                        disabled={isSyncing}
+                                                        title="Sincronizar com Astro-Kernel"
+                                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-500/40 hover:text-cyan-400 transition-all opacity-0 group-hover/profile:opacity-100 disabled:opacity-50"
+                                                     >
+                                                        <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                                                     </button>
+                                                 </div>
                                                  <p className="text-xs text-slate-400 leading-relaxed font-medium italic">
                                                      {initialData?.telemetry?.bioSummary || "[ ERRO CRÍTICO ] Conexão com ASTRO-KERNEL indisponível. Dados vitais ausentes."}
                                                  </p>
@@ -599,6 +629,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                                                         nextLevelXp={nextLevelXp}
                                                                         progressPercent={progressPercent}
                                                                         brandColor={brandColor}
+                                                                        iconSlug={stack.global_stacks.icon_slug}
                                                                         onDelete={handleDeleteStack}
                                                                     />
                                                                 );

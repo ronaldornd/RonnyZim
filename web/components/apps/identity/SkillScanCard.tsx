@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Database, Zap, Cpu, Box, LayoutPanelLeft, Framer } from 'lucide-react';
 
 interface SkillScanCardProps {
     id?: string;
@@ -13,8 +13,48 @@ interface SkillScanCardProps {
     nextLevelXp: number;
     progressPercent: number;
     brandColor: string;
+    iconSlug?: string;
     onDelete?: (id: string) => void;
 }
+
+const normalizeIconSlug = (slug: string = '') => {
+    const s = slug.toLowerCase();
+    
+    // Mapeamentos específicos para DevIcons (precisamos do slug exato da lib)
+    const devIconMap: Record<string, string> = {
+        'tailwind': 'tailwindcss',
+        'nextjs': 'nextjs',
+        'next': 'nextjs',
+        'node': 'nodejs',
+        'nodejs': 'nodejs',
+        'react native': 'react',
+        'postgresql': 'postgresql',
+        'sql': 'postgresql',
+        'vue': 'vuejs',
+        'angular': 'angularjs',
+        'gcp': 'googlecloud',
+        'aws': 'aws',
+        'azure': 'azure',
+        'vite': 'vitejs',
+        'spring': 'spring',
+        'mysql': 'mysql',
+        'database': 'postgresql', // fallback
+    };
+
+    return devIconMap[s] || s;
+};
+
+// Ícones ausentes no DevIcon que usaremos do Lucide
+const getLucideIcon = (slug: string = '') => {
+    const s = slug.toLowerCase();
+    if (s.includes('framer') || s.includes('motion')) return Framer;
+    if (s.includes('database') || s.includes('sql') || s.includes('query')) return Database;
+    if (s.includes('radar') || s.includes('scan')) return Zap;
+    if (s.includes('infra') || s.includes('system')) return Cpu;
+    if (s.includes('ui') || s.includes('design')) return LayoutPanelLeft;
+    if (s.includes('package') || s.includes('lib')) return Box;
+    return null;
+};
 
 const SkillScanCard: React.FC<SkillScanCardProps> = ({
     id,
@@ -25,6 +65,7 @@ const SkillScanCard: React.FC<SkillScanCardProps> = ({
     nextLevelXp,
     progressPercent,
     brandColor,
+    iconSlug,
     onDelete
 }) => {
     return (
@@ -39,9 +80,9 @@ const SkillScanCard: React.FC<SkillScanCardProps> = ({
                 {id && onDelete && (
                     <motion.button
                         initial={{ opacity: 0, scale: 0.8 }}
-                        whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
-                        animate={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
+                        whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 0.5)' }}
+                        animate={{ opacity: 0.2 }}
+                        whileInView={{ opacity: 0.4 }}
                         exit={{ opacity: 0 }}
                         onClick={(e) => {
                             e.preventDefault();
@@ -50,9 +91,10 @@ const SkillScanCard: React.FC<SkillScanCardProps> = ({
                                 onDelete(id);
                             }
                         }}
-                        className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/5 border border-white/10 group-hover:opacity-100 opacity-0 transition-opacity duration-300"
+                        className="absolute top-2 left-2 z-[70] p-1 rounded-lg bg-red-500/10 border border-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        title="Expurgar"
                     >
-                        <X className="w-3 h-3 text-red-400" />
+                        <X className="w-2 h-2 text-red-400" />
                     </motion.button>
                 )}
             </AnimatePresence>
@@ -83,13 +125,36 @@ const SkillScanCard: React.FC<SkillScanCardProps> = ({
                         <div 
                             className="w-12 h-12 rounded-2xl border border-white/10 flex items-center justify-center bg-white/[0.02] shadow-xl transition-all group-hover:border-white/20"
                         >
-                            <div 
-                                className="w-2 h-2 rounded-full" 
-                                style={{ 
-                                    backgroundColor: brandColor, 
-                                    boxShadow: `0 0 15px ${brandColor}, 0 0 30px ${brandColor}` 
-                                }} 
-                            />
+                            {(() => {
+                                const LucideIcon = getLucideIcon(iconSlug || '');
+                                if (LucideIcon) {
+                                    return (
+                                        <LucideIcon 
+                                            className="w-6 h-6" 
+                                            style={{ color: brandColor, filter: `drop-shadow(0 0 10px ${brandColor})` }} 
+                                        />
+                                    );
+                                }
+                                
+                                if (iconSlug) {
+                                    return (
+                                        <i 
+                                            className={`devicon-${normalizeIconSlug(iconSlug)}-plain text-2xl`} 
+                                            style={{ color: brandColor, filter: `drop-shadow(0 0 10px ${brandColor}) drop-shadow(0 0 20px ${brandColor}40)` }}
+                                        />
+                                    );
+                                }
+
+                                return (
+                                    <div 
+                                        className="w-2 h-2 rounded-full" 
+                                        style={{ 
+                                            backgroundColor: brandColor, 
+                                            boxShadow: `0 0 15px ${brandColor}, 0 0 30px ${brandColor}` 
+                                        }} 
+                                    />
+                                );
+                            })()}
                         </div>
                         <div>
                             <h3 className="font-black text-xs tracking-[0.2em] uppercase text-white/90 mb-1">{name}</h3>
