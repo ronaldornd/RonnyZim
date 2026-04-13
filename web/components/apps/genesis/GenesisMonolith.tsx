@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/browser';
+import { updateUserFactsAction } from '@/app/actions/profile';
+import { genesisSyncAction } from '@/app/actions/genesis-sync';
 import StackSelector from './StackSelector';
 import {
     Fingerprint,
@@ -39,90 +41,98 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
         e.preventDefault();
         setIsSubmitting(true);
 
+        const supabase = createClient();
+        
+        // RECUPERAÇÃO DE EMERGÊNCIA: Se userId prop estiver vazia, tenta pegar do browser
+        let effectiveUserId = userId;
+        if (!effectiveUserId || effectiveUserId === "") {
+            const { data: { session } } = await supabase.auth.getSession();
+            effectiveUserId = session?.user?.id || "";
+            console.log("Genesis: userId prop estava vazia. Recuperado via Sessão:", effectiveUserId);
+        }
+
+        if (!effectiveUserId || effectiveUserId === "" || effectiveUserId.length < 30) {
+            console.error("Genesis: Falha crítica - ID do usuário inválido para UUID.");
+            setIsSubmitting(false);
+            alert("Erro de Identidade: Sua sessão expirou ou é inválida. Por favor, recarregue a página.");
+            return;
+        }
+
         // Derivar date/time separados do birthDateTime (datetime-local format: "YYYY-MM-DDTHH:mm")
         const [birthDatePart, birthTimePart] = (formData.birthDateTime || '').split('T');
 
         // Preparar payload massivo de facts para o Supabase
         const factsToInsert = [
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'core_identity',
                 property_key: 'full_name',
                 value: formData.fullName,
             },
-            // display_name mirrors full_name for IdentityMatrix
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'core_identity',
                 property_key: 'display_name',
                 value: formData.fullName,
             },
-            // Structured natal data for AstroDash
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'astrology',
                 property_key: 'birth_date',
                 value: birthDatePart || '',
             },
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'astrology',
                 property_key: 'birth_time',
                 value: birthTimePart || '',
             },
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'astrology',
                 property_key: 'birth_city',
                 value: formData.birthCity,
             },
-            // Human-readable blob for AI context (kept for backward compat)
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'astrology',
                 property_key: 'birth_data',
                 value: `Nascido em ${formData.birthDateTime} na cidade de ${formData.birthCity}`,
             },
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'logistics',
                 property_key: 'current_location',
                 value: formData.currentLocation,
             },
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'career',
                 property_key: 'seniority',
                 value: formData.seniority,
             },
-            // Marcador primordial que prova que a calibração ocorreu (fallback pra DesktopShell)
             {
-                user_id: userId,
+                user_id: effectiveUserId,
                 category: 'system_calibration',
                 property_key: 'system_calibration_answer',
                 value: 'completed',
             }
         ];
 
-        const supabase = createClient();
-
-        // Injeção de Dados em Massa (usando upsert para evitar Violação Unique Key: user_id_property_key_key)
-        const { error } = await supabase.from('user_facts').upsert(
-            factsToInsert,
-            { onConflict: 'user_id,property_key' }
-        );
-
-        if (error) {
-            console.error("Erro na Calibração de Facts LOG DETALHADO:", error?.message, error?.details, error?.hint, error?.code);
-            console.error(error);
+        // Injeção de Dados em Massa via Server Action (Robusto / Server-Side Validation)
+        try {
+            await updateUserFactsAction(effectiveUserId, factsToInsert);
+        } catch (error: any) {
+            console.error("Erro na Calibração de Facts via Server Action:", error);
             setIsSubmitting(false);
+            alert("Erro na persistência neural: " + error.message);
             return;
         }
 
-        // 2) Insere as Stacks Individuais no RPG Mastery (Level 1, XP 0)
+        // 2) Insere as Stacks Individuais no RPG Mastery
         if (formData.mainStacks.length > 0) {
             const stacksToInsert = formData.mainStacks.map(stackId => ({
-                user_id: userId,
+                user_id: effectiveUserId,
                 stack_id: stackId,
                 current_xp: 0,
                 current_level: 1,
@@ -138,13 +148,15 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
             }
         }
 
-        // Exibir Toast Sucesso Transe MS
         setSuccessToast(true);
 
-        // Simulando calibração pesada da consciencia dos 15 agentes
-        setTimeout(() => {
-            onComplete();
-        }, 3500);
+        try {
+            await genesisSyncAction(effectiveUserId);
+        } catch (syncError) {
+            console.error("Falha ao sincronizar DNA com ASTRO-KERNEL:", syncError);
+        }
+
+        onComplete();
     };
 
     const handleInputChange = (field: string, value: string) => {
@@ -165,13 +177,13 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
             >
                 <div className="absolute -top-12 left-0 text-green-500/20 font-mono text-8xl font-black opacity-20 pointer-events-none select-none">DNA</div>
 
-                <div className="flex items-center gap-4 mb-4">
-                    <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.15)]">
-                        <Database className="w-6 h-6 text-green-400" />
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-1.5 bg-green-500/10 border border-green-500/30 rounded-lg shadow-[0_0_15px_rgba(34,197,94,0.15)] flex items-center justify-center">
+                        <Database className="w-5 h-5 text-green-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-slate-100 tracking-tight">Configuração da Matriz de Identidade</h1>
-                        <p className="text-xs font-mono tracking-widest text-green-500/70 uppercase mt-1">Protocolo Genesis • Single-Shot Data Injection</p>
+                        <h1 className="text-xl md:text-2xl font-bold text-slate-100 tracking-tight">Configuração da Matriz de Identidade</h1>
+                        <p className="text-[10px] font-mono tracking-widest text-green-500/70 uppercase mt-0.5">Protocolo Genesis • Single-Shot Data Injection</p>
                     </div>
                 </div>
 
@@ -194,11 +206,27 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
                                             <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-green-400" /> Data Natal</label>
-                                            <input required type="date" value={(formData.birthDateTime || '').split('T')[0]} onChange={(e) => handleInputChange('birthDateTime', `${e.target.value}T${(formData.birthDateTime || '').split('T')[1] || '00:00'}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" />
+                                            <input 
+                                                required 
+                                                type="date" 
+                                                value={(formData.birthDateTime || '').split('T')[0]} 
+                                                onChange={(e) => handleInputChange('birthDateTime', `${e.target.value}T${(formData.birthDateTime || '').split('T')[1] || '00:00'}`)} 
+                                                disabled={isSubmitting} 
+                                                style={{ colorScheme: 'dark' }}
+                                                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm" 
+                                            />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Clock className="w-3 h-3 text-teal-400" /> Hora Natal</label>
-                                            <input type="time" value={(formData.birthDateTime || '').split('T')[1] || ''} onChange={(e) => handleInputChange('birthDateTime', `${(formData.birthDateTime || '').split('T')[0]}T${e.target.value}`)} disabled={isSubmitting} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" placeholder="Ex: 14:30" />
+                                            <input 
+                                                type="time" 
+                                                value={(formData.birthDateTime || '').split('T')[1] || ''} 
+                                                onChange={(e) => handleInputChange('birthDateTime', `${(formData.birthDateTime || '').split('T')[0]}T${e.target.value}`)} 
+                                                disabled={isSubmitting} 
+                                                style={{ colorScheme: 'dark' }}
+                                                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all text-sm" 
+                                                placeholder="Ex: 14:30" 
+                                            />
                                         </div>
                                     </div>
                                     <div>
@@ -225,9 +253,22 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
                         <div className="md:col-span-2">
                             <div className="h-full border border-white/5 bg-[#0a0f0a]/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl relative overflow-hidden group hover:border-amber-500/30 transition-colors">
                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><Cpu className="w-24 h-24" /></div>
-                                <h2 className="text-base font-bold text-slate-200 flex items-center gap-2 mb-4">
-                                    <TerminalSquare className="w-4 h-4 text-amber-400" /> Perfil Técnico
-                                </h2>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-base font-bold text-slate-200 flex items-center gap-2">
+                                        <TerminalSquare className="w-4 h-4 text-amber-400" /> Perfil Técnico
+                                    </h2>
+                                    {formData.mainStacks.length > 0 && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, scale: 0.8 }} 
+                                            animate={{ opacity: 1, scale: 1 }} 
+                                            className="flex items-center px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded-full"
+                                        >
+                                            <span className="text-[10px] font-bold text-amber-500 font-mono tracking-widest uppercase">
+                                                {formData.mainStacks.length} Stack{formData.mainStacks.length === 1 ? '' : 's'}
+                                            </span>
+                                        </motion.div>
+                                    )}
+                                </div>
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Main Stacks (Mastery RPG)</label>
@@ -240,19 +281,25 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
                                         </div>
                                     </div>
                                     <div className="mt-3">
-                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1"><Briefcase className="w-3 h-3 text-amber-400" /> Senioridade Atual</label>
-                                        <select
-                                            value={formData.seniority}
-                                            onChange={(e) => handleInputChange('seniority', e.target.value)}
-                                            disabled={isSubmitting}
-                                            className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all text-sm appearance-none"
-                                        >
-                                            <option value="Junior">Junior</option>
-                                            <option value="Pleno">Pleno</option>
-                                            <option value="Senior">Senior</option>
-                                            <option value="Tech Lead">Tech Lead</option>
-                                            <option value="Staff/Principal">Staff / Principal / Arquitetura</option>
-                                        </select>
+                                        <label className="block text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-1"><Briefcase className="w-3 h-3 text-amber-400" /> Senioridade Atual</label>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                            {['Junior', 'Pleno', 'Senior', 'Tech Lead', 'Staff/Principal'].map((level) => (
+                                                <button
+                                                    key={level}
+                                                    type="button"
+                                                    onClick={() => handleInputChange('seniority', level)}
+                                                    disabled={isSubmitting}
+                                                    className={`
+                                                        px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest border transition-all
+                                                        ${formData.seniority === level 
+                                                            ? 'bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
+                                                            : 'bg-black/40 border-white/10 text-slate-500 hover:border-amber-500/50 hover:text-amber-500/70'}
+                                                    `}
+                                                >
+                                                    {level.replace('Staff/Principal', 'Staff / Arq')}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

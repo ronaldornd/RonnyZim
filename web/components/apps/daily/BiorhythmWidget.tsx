@@ -15,7 +15,7 @@ export default function BiorhythmWidget({ userId }: BiorhythmWidgetProps) {
     const getPhaseIcon = () => {
         switch (phase) {
             case 'peak': return <Zap className="w-5 h-5 text-emerald-400" />;
-            case 'creative': return <Sparkles className="w-5 h-5 text-purple-400" />;
+            case 'creative': return <Sparkles className="w-5 h-5 text-cyan-400" />;
             default: return <Moon className="w-5 h-5 text-blue-400" />;
         }
     };
@@ -28,7 +28,7 @@ export default function BiorhythmWidget({ userId }: BiorhythmWidgetProps) {
         >
             {/* Ambient Background Glow */}
             <div className={`absolute top-0 right-0 w-32 h-32 blur-[50px] opacity-20 pointer-events-none rounded-full
-                ${phase === 'peak' ? 'bg-emerald-500' : phase === 'creative' ? 'bg-purple-500' : 'bg-blue-500'}`} 
+                ${phase === 'peak' ? 'bg-emerald-500' : phase === 'creative' ? 'bg-cyan-500' : 'bg-blue-500'}`} 
             />
 
             <div className="flex items-center gap-4 z-10 w-full md:w-auto">
@@ -45,7 +45,7 @@ export default function BiorhythmWidget({ userId }: BiorhythmWidgetProps) {
                             ease: "easeInOut"
                         }}
                         className={`absolute inset-0 rounded-full blur-md opacity-30
-                            ${phase === 'peak' ? 'bg-emerald-500' : phase === 'creative' ? 'bg-purple-500' : 'bg-blue-500'}`}
+                            ${phase === 'peak' ? 'bg-emerald-500' : phase === 'creative' ? 'bg-cyan-500' : 'bg-blue-500'}`}
                     />
                     <div className="relative p-3 rounded-full bg-white/5 border border-white/10">
                         {getPhaseIcon()}
