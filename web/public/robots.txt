@@ -3,6 +3,5 @@ Allow: /
 Disallow: /api/
 Disallow: /admin/
 Disallow: /_next/
-Disallow: /proxy.ts
 
 Sitemap: https://shell.ronnyzim.com/sitemap.xml

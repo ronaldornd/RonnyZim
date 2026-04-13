@@ -7,6 +7,7 @@ const firaCode = Fira_Code({ subsets: ['latin'], variable: '--font-fira' });
 const shareTech = Share_Tech_Mono({ weight: '400', subsets: ['latin'], variable: '--font-tech' });
 
 export const metadata: Metadata = {
+    metadataBase: new URL('https://shell.ronnyzim.com'),
     title: {
         default: 'RonnyZim OS | Sistema de Inteligência Modular',
         template: '%s | RonnyZim OS'
@@ -28,12 +29,14 @@ export const metadata: Metadata = {
         siteName: 'RonnyZim OS',
         locale: 'pt_BR',
         type: 'website',
+        images: [{ url: '/og-image.png', width: 1200, height: 630 }],
     },
     twitter: {
         card: 'summary_large_image',
         title: 'RonnyZim OS',
         description: 'Interface modular de inteligência e estratégia.',
         creator: '@ronnyzim',
+        images: ['/og-image.png'],
     },
     robots: {
         index: true,
@@ -45,6 +48,9 @@ export const metadata: Metadata = {
             'max-image-preview': 'large',
             'max-snippet': -1,
         },
+    },
+    alternates: {
+        canonical: '/',
     },
 };
 
@@ -58,7 +64,7 @@ export default function RootLayout({
             <head>
                 <IdentitySchema />
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
-                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
             </head>
             <body className={`${firaCode.variable} ${shareTech.variable} antialiased bg-[#020202] text-white overflow-hidden`}>
                 {children}

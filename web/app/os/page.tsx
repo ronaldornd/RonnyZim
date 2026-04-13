@@ -41,15 +41,7 @@ export default async function OSPage() {
     const hasCalibration = facts?.some(f => f.property_key === 'system_calibration_answer' && f.value === 'completed');
     const hasProfileData = facts?.some(f => ['full_name', 'display_name'].includes(f.property_key) && f.value);
 
-    // Logging to Terminal to debug
-    console.log("=== SERVER SIDE RENDER DEBUG ===");
-    console.log("Target UserId:", userId);
-    console.log("Facts returned from Supabase:", facts);
-    console.log("hasCalibration:", hasCalibration);
-    console.log("hasProfileData:", hasProfileData);
-    
     const initialApp = (hasCalibration || hasProfileData) ? 'workspace' : 'genesis';
-    console.log("initialApp computed as:", initialApp);
 
     // Os dados pesados do IdentityMatrix serão buscados via Streaming no componente de ação
     // ou passados via Promise para o componente cliente (Next.js 16 pattern)

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/browser';
 import { useBootSequence } from '@/hooks/useBootSequence';
+import { saveSettingsAction } from '@/app/actions/settings';
 import { 
     Settings2, 
     Cpu, 
@@ -80,7 +81,11 @@ export default function SettingsApp({ userId }: { userId: string }) {
         try {
             setLoadingModels(true);
             setError(null);
-            const res = await fetch(`/api/models?provider=${provider}&apiKey=${apiKey}`);
+            const res = await fetch(`/api/models`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider, apiKey })
+            });
             if (!res.ok) throw new Error('Falha ao validar chaves ou buscar modelos');
             const data = await res.json();
             setModels(data.models || []);
@@ -113,9 +118,13 @@ export default function SettingsApp({ userId }: { userId: string }) {
                     if (f.property_key === 'preferred_ai_provider') setSelectedProvider(f.value);
                     if (f.property_key === 'preferred_ai_model') setSelectedModel(f.value);
                     if (f.property_key === 'preferred_audio_model') setSelectedAudioModel(f.value);
-                    if (f.property_key === 'gemini_api_key') setGeminiKey(f.value);
-                    if (f.property_key === 'openai_api_key') setOpenaiKey(f.value);
-                    if (f.property_key === 'anthropic_api_key') setAnthropicKey(f.value);
+                    
+                    // Se a chave vier criptografada do banco, mostramos um placeholder visual
+                    const displayValue = f.value?.startsWith('enc:') ? '****************' : f.value;
+                    
+                    if (f.property_key === 'gemini_api_key') setGeminiKey(displayValue);
+                    if (f.property_key === 'openai_api_key') setOpenaiKey(displayValue);
+                    if (f.property_key === 'anthropic_api_key') setAnthropicKey(displayValue);
                 });
             }
         } catch (err) {
@@ -129,8 +138,6 @@ export default function SettingsApp({ userId }: { userId: string }) {
             setError(null);
             setSuccessMsg(null);
 
-            const supabase = createClient();
-            
             const updates = [
                 { category: 'System', property_key: 'preferred_ai_provider', value: selectedProvider },
                 { category: 'System', property_key: 'preferred_ai_model', value: selectedModel },
@@ -140,15 +147,8 @@ export default function SettingsApp({ userId }: { userId: string }) {
                 { category: 'Security', property_key: 'anthropic_api_key', value: anthropicKey },
             ];
 
-            for (const update of updates) {
-                const { error: upsertError } = await supabase
-                    .from('user_facts')
-                    .upsert({
-                        user_id: userId,
-                        ...update
-                    }, { onConflict: 'user_id,property_key' });
-                if (upsertError) throw upsertError;
-            }
+            const result = await saveSettingsAction(updates);
+            if (!result.success) throw new Error(result.error);
 
             setSuccessMsg('Brain parameters updated successfully.');
             setTimeout(() => setSuccessMsg(null), 4000);
