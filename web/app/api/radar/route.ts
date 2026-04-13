@@ -18,7 +18,7 @@ export async function POST(req: Request) {
         }
 
         // 1. Get Dynamic Provider via AI Factory
-        const { provider, modelId } = await getAIProvider(user_id);
+        const { model } = await getAIProvider(user_id);
 
         const systemInstruction = `
             Você é um Headhunter Técnico de Elite. Sua missão é ajudar o candidato a hackear o processo seletivo da empresa ${company_name}.
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
         // 2. Invoke AI SDK (generateObject)
         const { object: result } = await generateObject({
-            model: provider(modelId),
+            model: model,
             schema: radarSchema,
             system: systemInstruction,
             prompt: userPrompt,

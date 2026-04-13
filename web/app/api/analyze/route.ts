@@ -28,7 +28,7 @@ export async function POST(req: Request) {
         }
 
         // 1. Get Dynamic Provider via AI Factory
-        const { provider, modelId } = await getAIProvider(userId);
+        const { model } = await getAIProvider(userId);
 
         // 2. Download the file from the Signed URL
         const fileResponse = await fetch(fileUrl);
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
         // 5. Invoke AI SDK (generateObject ensures strict structure across ANY provider)
         const { object: analysisResult } = await generateObject({
-            model: provider(modelId),
+            model: model,
             schema: analysisSchema,
             system: systemInstruction,
             messages: messages,
