@@ -1,7 +1,7 @@
 "use server";
 
 import { createRouteHandlerClient } from "@/lib/supabase/server";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 export interface UserStack {
     id: string;
@@ -20,6 +20,12 @@ export interface UserFacts {
     birth_date: string;
     birth_time: string;
     birth_city: string;
+    telemetry_sync?: number;
+    telemetry_integrity?: number;
+    telemetry_biosummary?: string;
+    gemini_api_key?: string;
+    openai_api_key?: string;
+    anthropic_api_key?: string;
 }
 
 export interface DailyQuest {
@@ -67,7 +73,14 @@ export async function getProfileData(userId: string) {
             'profile_title', 
             'birth_date', 
             'birth_time', 
-            'birth_city'
+            'birth_city',
+            'telemetry_sync',
+            'telemetry_integrity',
+            'telemetry_biosummary',
+            'system_calibration_answer',
+            'gemini_api_key',
+            'openai_api_key',
+            'anthropic_api_key'
         ]);
 
     const facts: Partial<UserFacts> = {};
@@ -83,17 +96,33 @@ export async function getProfileData(userId: string) {
     }
 
     // 3. Fetch Quests
-    const { data: quests, error: questsError } = await supabase
+    const { data: quests } = await supabase
         .from('daily_quests')
         .select('*')
         .eq('user_id', userId)
+        .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(10);
+
+    // 4. Fetch Completed Quests for Journey History
+    const { data: completedQuests } = await supabase
+        .from('daily_quests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(3);
 
     return {
         stacks: (stacks || []) as unknown as UserStack[],
         facts: facts as UserFacts,
-        quests: (quests || []).map(q => ({ ...q, completed: q.status === 'completed' })) as DailyQuest[]
+        quests: (quests || []).map(q => ({ ...q, completed: q.status === 'completed' })) as DailyQuest[],
+        completedQuests: completedQuests || [],
+        telemetry: {
+            integrity: Number(facts.telemetry_integrity) || 0,
+            sync: Number(facts.telemetry_sync) || 0,
+            bioSummary: facts.telemetry_biosummary || null
+        }
     };
 }
 
@@ -131,6 +160,7 @@ export async function updateUserXP(userId: string, stackId: string, xpDelta: num
 
     // Dynamic Revalidation
     revalidateTag(`profile-${userId}`, 'max');
+    revalidatePath('/os');
     
     return { newXp, newLevel };
 }
@@ -150,6 +180,7 @@ export async function completeQuestAction(userId: string, questId: string, stack
     const result = await updateUserXP(userId, stackId, xpReward);
 
     revalidateTag(`profile-${userId}`, 'max');
+    revalidatePath('/os');
     
     return result;
 }
@@ -162,13 +193,16 @@ export async function updateUserFactsAction(userId: string, updates: { category:
         ...u
     }));
 
-    const { error } = await supabase
-        .from('user_facts')
-        .upsert(formattedUpdates, { onConflict: 'user_id,property_key' });
+    const { error } = await supabase.from('user_facts').upsert(formattedUpdates, { onConflict: 'user_id,property_key' });
 
-    if (error) throw new Error(`Failed to update user facts: ${error.message}`);
+    if (error) {
+        console.error("Critical error in updateUserFactsAction:", error);
+        throw new Error(`Failed to update user facts: ${error.message}`);
+    }
 
     revalidateTag(`profile-${userId}`, 'max');
+    revalidatePath('/os');
+    revalidatePath('/'); // Também revalida a home por segurança
     return { success: true };
 }
 
@@ -184,5 +218,25 @@ export async function deleteUserStackAction(userId: string, stackId: string) {
     if (error) throw new Error(`Failed to delete stack: ${error.message}`);
 
     revalidateTag(`profile-${userId}`, 'max');
+    revalidatePath('/os');
+    return { success: true };
+}
+
+export async function updateJobForgeAction(jobId: string, forgeCv: string, forgeObjective: string) {
+    const supabase = await createRouteHandlerClient();
+
+    const { error } = await supabase
+        .from('hunter_insights')
+        .update({
+            forge_cv: forgeCv,
+            forge_objective: forgeObjective
+        })
+        .eq('id', jobId);
+
+    if (error) {
+        console.error("Error updating job forge data:", error);
+        throw new Error(`Failed to update job forge data: ${error.message}`);
+    }
+
     return { success: true };
 }

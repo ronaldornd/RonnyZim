@@ -37,7 +37,9 @@ export function SearchTerminal({ onScan, isScanning, statusMessage }: SearchTerm
       </div>
 
       <form onSubmit={handleSubmit} className="relative">
+        <label htmlFor="tactical-search" className="sr-only">Diretriz de busca tática</label>
         <input 
+          id="tactical-search"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

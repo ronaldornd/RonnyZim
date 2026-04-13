@@ -28,6 +28,8 @@ import {
     MessageSquare,
     Globe
 } from 'lucide-react';
+import SearchTerminal from './SearchTerminal';
+import SkillScanCard from '../identity/SkillScanCard';
 import CVForgeModal from './CVForgeModal';
 import ListeningRoom from './ListeningRoom';
 import { HunterInsight } from './HunterBoard';
@@ -41,6 +43,8 @@ interface TargetDossierProps {
     onUpdateStatus: (id: string, status: HunterInsight['status']) => void;
     openDocument: (name: string) => void;
 }
+
+import { updateJobForgeAction } from '@/app/actions/profile';
 
 type TabType = 'Intel' | 'Estratégia' | 'Treinamento' | 'Radar' | 'Logística';
 
@@ -59,6 +63,16 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
 
     const [isForging, setIsForging] = useState(false);
     const [forgeData, setForgeData] = useState<{coverLetter: string, resumeSummary: string} | null>(null);
+
+    // Sync forge data from props (cache recognition)
+    useEffect(() => {
+        if (job.forge_cv && job.forge_objective) {
+            setForgeData({
+                coverLetter: job.forge_cv,
+                resumeSummary: job.forge_objective
+            });
+        }
+    }, [job.forge_cv, job.forge_objective]);
     const [isScanning, setIsScanning] = useState(false);
     const [radarData, setRadarData] = useState<{targets: string[], dm_template: string} | null>(null);
     const [copied, setCopied] = useState(false);
@@ -92,6 +106,20 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
     };
 
     const handleForge = async () => {
+        // 1. Check for cached arsenal (Local state or Props)
+        const cachedCV = forgeData?.coverLetter || job.forge_cv;
+        const cachedObjective = forgeData?.resumeSummary || job.forge_objective;
+
+        if (cachedCV && cachedObjective) {
+            if (!forgeData) {
+                setForgeData({ 
+                    coverLetter: cachedCV, 
+                    resumeSummary: cachedObjective 
+                });
+            }
+            return;
+        }
+
         setIsForging(true);
         try {
             const res = await fetch('/api/forge', {
@@ -103,10 +131,19 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
                     missing_skills: job.gap_analysis?.missing_skills || []
                 })
             });
+            
             if (res.ok) {
                 const data = await res.json();
-                setForgeData({ coverLetter: data.cover_letter, resumeSummary: data.resume_summary });
+                const cv = data.cover_letter;
+                const objective = data.resume_summary;
+                
+                setForgeData({ coverLetter: cv, resumeSummary: objective });
+
+                // 2. Persist to cache (Supabase)
+                await updateJobForgeAction(job.id, cv, objective);
             }
+        } catch (e) {
+            console.error('Forge Failed:', e);
         } finally {
             setIsForging(false);
         }
@@ -291,32 +328,44 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
                         )}
 
                         {activeTab === 'Treinamento' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
-                                <div className="lg:col-span-12 flex items-center justify-center">
-                                    <button 
-                                        onClick={() => onStartInterview(job)}
-                                        className="w-full max-w-xl group relative overflow-hidden"
-                                    >
-                                        <div className="absolute inset-0 bg-red-500/20 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                        <div className="relative z-10 p-10 rounded-[2.5rem] bg-red-600 border border-white/20 shadow-[0_30px_80px_rgba(239,68,68,0.2)] flex flex-col items-center gap-4 group-hover:scale-[1.02] transition-transform duration-500 active:scale-[0.98]">
-                                            <Mic size={64} className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]" />
-                                            <div className="text-center">
-                                                <h3 className="text-3xl font-black text-white uppercase tracking-tighter">HunterZim Voice</h3>
-                                                <p className="text-white/60 font-mono text-[9px] uppercase tracking-[0.3em] mt-1">Iniciar Simulação Neural</p>
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full overflow-y-auto custom-scrollbar pb-2">
+                                <div className="lg:col-span-12 flex flex-col shrink-0">
+                                    {/* Simulador CTA - Compact */}
+                                    <section className="p-4 md:p-6 rounded-[2rem] bg-white/[0.02] border border-red-500/10 flex items-center gap-5 group hover:border-red-500/30 transition-all">
+                                        <button 
+                                            onClick={() => onStartInterview(job)}
+                                            className="relative shrink-0 overflow-hidden"
+                                        >
+                                            <div className="absolute inset-0 bg-red-500/20 blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                            <div className="relative z-10 w-16 h-16 rounded-2xl bg-red-600 border border-white/20 shadow-[0_10px_40px_rgba(239,68,68,0.2)] flex items-center justify-center group-hover:scale-105 transition-transform duration-500 active:scale-95">
+                                                <Mic size={28} className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                                             </div>
+                                        </button>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-lg font-black text-white uppercase tracking-tight leading-none mb-1.5">Simulador de Entrevista</h3>
+                                            <p className="text-[11px] text-zinc-500 leading-relaxed max-w-lg mb-3">
+                                                O HunterZim Agent faz perguntas técnicas baseadas nos requisitos da vaga e nos seus gaps identificados. 
+                                                Você responde por voz e recebe avaliação com score.
+                                            </p>
+                                            <button 
+                                                onClick={() => onStartInterview(job)}
+                                                className="px-5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[9px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 inline-flex"
+                                            >
+                                                Iniciar Sessão de Treino
+                                            </button>
                                         </div>
-                                    </button>
+                                    </section>
                                 </div>
                                 
-                                <section className="lg:col-span-12 p-6 rounded-[2rem] bg-white/[0.02] border border-white/5">
+                                <section className="lg:col-span-12 p-4 md:p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 shrink-0 h-fit">
                                     <h3 className="text-[9px] font-black text-amber-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
                                         <Zap size={14} /> Plano de Ação
                                     </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         {(Array.isArray(job.action_plan) ? job.action_plan : (job.action_plan?.steps || []))?.map((step: string, idx: number) => (
-                                            <div key={idx} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-amber-500/20 transition-all">
-                                                <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-[10px] font-black text-amber-500 mb-4">{idx + 1}</div>
-                                                <p className="text-xs text-zinc-400 leading-relaxed">{step}</p>
+                                            <div key={idx} className="p-4 md:p-5 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-amber-500/20 transition-all flex flex-col">
+                                                <div className="w-7 h-7 rounded-full bg-amber-500/10 flex items-center justify-center text-[10px] font-black text-amber-500 mb-3 shrink-0">{idx + 1}</div>
+                                                <p className="text-[11px] md:text-xs text-zinc-400 leading-relaxed">{step}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -383,8 +432,8 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
                                             </div>
                                         )}
                                     </div>
-                                    <div className="p-6 rounded-[2rem] bg-indigo-500/[0.02] border border-indigo-500/10 flex flex-col">
-                                        <h3 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+                                    <div className="p-6 rounded-[2rem] bg-blue-500/[0.02] border border-blue-500/10 flex flex-col">
+                                        <h3 className="text-[9px] font-black text-blue-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
                                             <MessageSquare size={14} /> Listening Room
                                         </h3>
                                         <div className="flex-1 overflow-hidden">
@@ -425,7 +474,9 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
                                                 <Save size={18} />
                                             </button>
                                         </div>
+                                        <label htmlFor="tactical-notes" className="sr-only">Notas Táticas</label>
                                         <textarea 
+                                            id="tactical-notes"
                                             value={notes}
                                             onChange={(e) => setNotes(e.target.value)}
                                             placeholder="Registrar insights de guerra..."
