@@ -16,5 +16,9 @@ export async function GET(request: Request) {
         }
     }
 
-    return NextResponse.redirect(new URL(next, request.url));
+    // Proteção contra Open Redirect: valida se 'next' é um caminho relativo seguro
+    const isSafeRedirect = next.startsWith('/') && !next.includes('://');
+    const safeNext = isSafeRedirect ? next : '/';
+
+    return NextResponse.redirect(new URL(safeNext, request.url));
 }
