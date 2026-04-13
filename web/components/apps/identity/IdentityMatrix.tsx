@@ -23,7 +23,12 @@ import {
     Network,
     LayoutList,
     Zap,
-    Play
+    Play,
+    Target,
+    ShieldAlert,
+    Key,
+    ArrowRight,
+    Loader2
 } from 'lucide-react';
 import { ColorMap } from '../genesis/StackSelector';
 import BiorhythmWidget from '../daily/BiorhythmWidget';
@@ -38,6 +43,7 @@ import {
     UserStack as RemoteUserStack 
 } from '@/app/actions/profile';
 import IdentityPolygon from './IdentityPolygon';
+import { useOSStore } from '@/lib/store';
 import SkillScanCard from './SkillScanCard';
 
 interface UserStack {
@@ -58,6 +64,12 @@ interface IdentityMatrixProps {
         stacks: RemoteUserStack[];
         facts: any;
         quests: RemoteDailyQuest[];
+        completedQuests: any[];
+        telemetry: {
+            integrity: number;
+            sync: number;
+            bioSummary: string | null;
+        };
     }>;
 }
 
@@ -66,6 +78,7 @@ interface IdentityMatrixProps {
 
 
 export default function IdentityMatrix({ userId, isActive = true, profilePromise }: IdentityMatrixProps) {
+    const { setActiveApp } = useOSStore();
     // Consumir dados do servidor via 'use' hook (Next.js 16/React 19)
     const initialData = profilePromise ? use(profilePromise) : null;
     
@@ -78,6 +91,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
     const [birthDate, setBirthDate] = useState(initialData?.facts?.birth_date || '');
     const [birthTime, setBirthTime] = useState(initialData?.facts?.birth_time || '');
     const [birthCity, setBirthCity] = useState(initialData?.facts?.birth_city || '');
+    const [seniority, setSeniority] = useState(initialData?.facts?.seniority || 'Pleno');
 
     // Mastery & Jornada com Optimismo
     const [optimisticStacks, addOptimisticStack] = useOptimistic(
@@ -129,6 +143,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
     const [editBirth, setEditBirth] = useState('');
     const [editTime, setEditTime] = useState('');
     const [editCity, setEditCity] = useState('');
+    const [editSeniority, setEditSeniority] = useState('');
 
     const fetchIdentityStats = async () => {
         if (!userId || initialData) return; // Se já temos initialData (SWR), pula o fetch agressivo
@@ -142,7 +157,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
         if (isActive) {
             fetchIdentityStats();
         }
-    }, [userId, isActive]);
+    }, [userId, isActive, initialData]);
 
     const enterEditMode = () => {
         setEditName(displayName);
@@ -150,6 +165,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
         setEditBirth(birthDate);
         setEditTime(birthTime);
         setEditCity(birthCity);
+        setEditSeniority(seniority);
         setEditMode(true);
     };
 
@@ -160,6 +176,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
             { category: 'astrology', property_key: 'birth_date', value: editBirth },
             { category: 'astrology', property_key: 'birth_time', value: editTime },
             { category: 'astrology', property_key: 'birth_city', value: editCity },
+            { category: 'professional', property_key: 'seniority', value: editSeniority },
             { 
                 category: 'astrology', 
                 property_key: 'birth_data', 
@@ -176,7 +193,8 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                 setBirthDate(editBirth);
                 setBirthTime(editTime);
                 setBirthCity(editCity);
-                localStorage.removeItem('rndmind_astro_cache');
+                setSeniority(editSeniority);
+                localStorage.removeItem('astrokernel_astro_cache');
                 setEditMode(false);
                 playSuccess();
             } catch (error) {
@@ -240,11 +258,13 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
     };
 
     // Preparar dados do gráfico de radar usando valores otimistas
-    const radarData = optimisticStacks.map(s => ({
-        subject: s.global_stacks.name,
-        A: (s.current_level * 10) + (s.current_xp / 10), 
-        fullMark: 100,
-    }));
+    const radarData = optimisticStacks
+        .filter(s => s && s.global_stacks) // Garante que apenas stacks válidas entrem no gráfico
+        .map(s => ({
+            subject: s.global_stacks?.name || 'Unknown',
+            A: (s.current_level * 10) + (s.current_xp / 10), 
+            fullMark: 100,
+        }));
 
     const renderTabs = () => {
         const tabs = [
@@ -290,7 +310,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
     }
 
     return (
-        <div className="h-full w-full bg-[#050505] p-3 pt-1 text-slate-200 overflow-hidden relative flex flex-col">
+        <div className="h-full w-full bg-[#050505] p-2 pt-0.5 text-slate-200 overflow-hidden relative flex flex-col">
             {/* Fundo Ambientes */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none" />
             
@@ -318,11 +338,12 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                         </div>
 
                                         <div className="relative shrink-0">
-                                            <div className="w-28 h-28 rounded-full bg-cyan-500/10 p-1 shadow-[0_0_30px_rgba(6,182,212,0.15)] border border-cyan-500/20">
+                                            <div className="w-20 h-20 rounded-full bg-cyan-500/10 p-1 shadow-[0_0_30px_rgba(6,182,212,0.15)] border border-cyan-500/20">
                                                 <div className="w-full h-full bg-black/40 backdrop-blur-xl rounded-full flex items-center justify-center border border-cyan-500/30 overflow-hidden">
                                                     <IdentityPolygon 
                                                         level={optimisticStacks.reduce((a, s) => a + s.current_level, 0)}
                                                         xp={Math.round((optimisticStacks.reduce((a, s) => a + s.current_xp, 0) / (Math.max(1, optimisticStacks.length) * 100)) * 100) || 0}
+                                                        className="w-12 h-12"
                                                     />
                                                 </div>
                                             </div>
@@ -351,33 +372,58 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                                     
                                                     <div className="space-y-4 pt-2 border-t border-white/5">
                                                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">✦ Dados Natais / Astrometria</p>
-                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                            <div>
-                                                                <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block mb-2">Data</label>
+                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest block">Data</label>
                                                                 <input
                                                                     type="date"
                                                                     value={editBirth}
                                                                     onChange={e => setEditBirth(e.target.value)}
-                                                                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-slate-300 text-xs focus:outline-none focus:border-cyan-500/30 transition-all"
+                                                                    style={{ colorScheme: 'dark' }}
+                                                                    className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-slate-300 text-[10px] focus:outline-none focus:border-cyan-500/30 transition-all appearance-none"
                                                                 />
                                                             </div>
-                                                            <div>
-                                                                <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block mb-2">Hora</label>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest block">Hora</label>
                                                                 <input
                                                                     type="time"
                                                                     value={editTime}
                                                                     onChange={e => setEditTime(e.target.value)}
-                                                                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-slate-300 text-xs focus:outline-none focus:border-cyan-500/30 transition-all"
+                                                                    style={{ colorScheme: 'dark' }}
+                                                                    className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-slate-300 text-[10px] focus:outline-none focus:border-cyan-500/30 transition-all appearance-none"
                                                                 />
                                                             </div>
-                                                            <div className="col-span-2 md:col-span-1">
-                                                                <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block mb-2">Cidade</label>
+                                                            <div className="col-span-2 md:col-span-1 space-y-1">
+                                                                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest block">Cidade</label>
                                                                 <input
                                                                     value={editCity}
                                                                     onChange={e => setEditCity(e.target.value)}
                                                                     placeholder="Ex: São Paulo, SP"
-                                                                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-slate-300 text-xs focus:outline-none focus:border-cyan-500/30 transition-all"
+                                                                    className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-slate-300 text-[10px] focus:outline-none focus:border-cyan-500/30 transition-all"
                                                                 />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-4 pt-2 border-t border-white/5">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">✦ Evolução Profissional</p>
+                                                        <div className="relative group">
+                                                            <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest block mb-2">Senioridade Atual</label>
+                                                            <div className="relative">
+                                                                <select
+                                                                    value={editSeniority}
+                                                                    onChange={e => setEditSeniority(e.target.value)}
+                                                                    className="w-full bg-black/40 border border-amber-500/30 rounded-xl px-4 py-3 text-slate-200 text-xs focus:outline-none focus:border-amber-500 transition-all appearance-none cursor-pointer backdrop-blur-xl"
+                                                                >
+                                                                    <option value="Junior" className="bg-[#0a0a0a]">Junior</option>
+                                                                    <option value="Pleno" className="bg-[#0a0a0a]">Pleno</option>
+                                                                    <option value="Senior" className="bg-[#0a0a0a]">Senior</option>
+                                                                    <option value="Tech Lead" className="bg-[#0a0a0a]">Tech Lead</option>
+                                                                    <option value="Staff / Principal / Arquitetura" className="bg-[#0a0a0a]">Staff / Principal / Arquitetura</option>
+                                                                </select>
+                                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                                                    <Award className="w-3 h-3 text-amber-500 animate-pulse" />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -401,9 +447,9 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                                             <Pencil className="w-4 h-4 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
                                                         </button>
                                                     </div>
-                                                    <p className="text-[10px] font-bold text-cyan-500/60 tracking-[0.4em] uppercase mt-2">{profileTitle}</p>
+                                                    <p className="text-[9px] font-bold text-cyan-500/60 tracking-[0.4em] uppercase mt-1">{profileTitle}</p>
                                                     
-                                                    <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-6">
+                                                    <div className="mt-4 flex flex-wrap justify-center md:justify-start gap-4">
                                                         {(birthDate || birthTime || birthCity) && (
                                                             <div className="space-y-2">
                                                                 <p className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em] mb-1">Astrometria Natal</p>
@@ -411,6 +457,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                                                     {birthDate && <span className="text-[11px] font-mono text-slate-400 transition-colors hover:text-cyan-400">📅 {new Date(birthDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
                                                                     {birthTime && <span className="text-[11px] font-mono text-slate-400 transition-colors hover:text-cyan-400">🕐 {birthTime}</span>}
                                                                     {birthCity && <span className="text-[11px] font-mono text-slate-400 transition-colors hover:text-cyan-400">📍 {birthCity}</span>}
+                                                                    {seniority && <span className="text-[11px] font-mono text-amber-500/80 transition-colors hover:text-amber-400">🎖️ {seniority}</span>}
                                                                 </div>
                                                             </div>
                                                         )}
@@ -439,50 +486,59 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                                 <p className="text-[9px] font-bold text-cyan-400/60 uppercase tracking-widest mb-1">INTEGRIDADE DA IDENTIDADE</p>
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                                                        <div className="w-[98%] h-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.3)]" />
+                                                        <motion.div 
+                                                            initial={{ width: 0 }}
+                                                            animate={{ width: `${initialData?.telemetry?.integrity ?? 4}%` }}
+                                                            className="h-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.3)]" 
+                                                        />
                                                     </div>
-                                                    <span className="text-[10px] font-mono text-cyan-400">98%</span>
+                                                    <span className="text-[10px] font-mono text-cyan-400">{initialData?.telemetry?.integrity ?? 4}%</span>
                                                 </div>
                                             </div>
                                             <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
                                                 <p className="text-[10px] font-bold text-blue-400/60 uppercase tracking-widest mb-1">SINCRONIA TEMPORAL</p>
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                                                        <div className="w-[85%] h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]" />
+                                                        <motion.div 
+                                                            initial={{ width: 0 }}
+                                                            animate={{ width: `${initialData?.telemetry?.sync ?? 12}%` }}
+                                                            className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]" 
+                                                        />
                                                     </div>
-                                                    <span className="text-[10px] font-mono text-blue-400">85%</span>
+                                                    <span className="text-[10px] font-mono text-blue-400">{initialData?.telemetry?.sync ?? 12}%</span>
                                                 </div>
                                             </div>
                                          </div>
-
+ 
                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
                                                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                                     <UserCircle2 className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> RESUMO BIOGRÁFICO
+                                                     <UserCircle2 className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> PERFIL DE OPERAÇÃO
                                                  </p>
-                                                 <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                                                     Especialista em Engenharia de Software com foco em ecossistemas React, Node.js e automação de processos via IA. Arquiteto do RonnyZim OS, focado em alta performance e interfaces de densidade profissional.
+                                                 <p className="text-xs text-slate-400 leading-relaxed font-medium italic">
+                                                     {initialData?.telemetry?.bioSummary || "[ ERRO CRÍTICO ] Conexão com ASTRO-KERNEL indisponível. Dados vitais ausentes."}
                                                  </p>
                                              </div>
                                              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
                                                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                                     <Award className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> HISTÓRICO OPERACIONAL
+                                                     <Award className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" /> LOGS DA JORNADA (RECON)
                                                  </p>
                                                  <div className="space-y-3">
-                                                     <div>
-                                                         <div className="flex justify-between items-center mb-1">
-                                                             <span className="text-[10px] font-bold text-slate-300">TECH LEAD @ CYBERCORP</span>
-                                                             <span className="text-[9px] font-mono text-slate-500">2024 — PRESENTE</span>
+                                                     {initialData?.completedQuests && initialData.completedQuests.length > 0 ? (
+                                                         initialData.completedQuests.map((q: any) => (
+                                                             <div key={q.id}>
+                                                                 <div className="flex justify-between items-center mb-1">
+                                                                     <span className="text-[10px] font-bold text-slate-300 uppercase">{q.title}</span>
+                                                                     <span className="text-[9px] font-mono text-emerald-500">+{q.xp_reward} XP</span>
+                                                                 </div>
+                                                                 <p className="text-[10px] text-slate-500">{q.description.substring(0, 60)}...</p>
+                                                             </div>
+                                                         ))
+                                                     ) : (
+                                                         <div className="text-[10px] text-slate-600 font-mono animate-pulse">
+                                                             [ NENHUM LOG DE MISSÃO ENCONTRADO ]
                                                          </div>
-                                                         <p className="text-[10px] text-slate-500">Arquitetura de microsserviços e liderança técnica de times ágeis.</p>
-                                                     </div>
-                                                     <div className="pt-2 border-t border-white/5">
-                                                         <div className="flex justify-between items-center mb-1">
-                                                             <span className="text-[10px] font-bold text-slate-300">SR. FRONTEND @ NEONET</span>
-                                                             <span className="text-[9px] font-mono text-slate-500">2021 — 2023</span>
-                                                         </div>
-                                                         <p className="text-[10px] text-slate-500">Desenvolvimento de interfaces complexas com Next.js e WebGL.</p>
-                                                     </div>
+                                                     )}
                                                  </div>
                                              </div>
                                          </div>
@@ -587,135 +643,206 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                     </div>
                                 </div>
                             )}
-
                             {activeTab === 'JORNADA' && (
                                 <div className="h-full flex flex-col gap-6 py-4 px-2">
                                     <Suspense fallback={<StreamingFallback label="SYNCHRONIZING QUESTS..." />}>
-                                        <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                                            <div className="p-6 rounded-[2rem] border border-white/5 bg-white/[0.01]">
-                                                 <BiorhythmWidget userId={userId} />
-                                            </div>
-
-                                            <div className="pt-2 flex-1 flex flex-col">
-                                                <div className="flex items-center justify-between mb-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <Award className="w-5 h-5 text-amber-500" />
-                                                        <h3 className="text-xs font-black tracking-[0.3em] text-slate-500 uppercase">Log de Missões Diárias</h3>
-                                                    </div>
-                                                    
-                                                    {optimisticQuests.length > questsPerPage && (
-                                                        <div className="flex items-center gap-4">
-                                                            <span className="text-[9px] font-mono font-black text-zinc-600 uppercase tracking-widest">
-                                                                Página {jornadaPage + 1} de {Math.ceil(optimisticQuests.length / questsPerPage)}
-                                                            </span>
-                                                            <div className="flex gap-1">
-                                                                <button 
-                                                                    onClick={() => setJornadaPage(p => Math.max(0, p - 1))}
-                                                                    disabled={jornadaPage === 0}
-                                                                    className={`p-2 rounded-lg transition-all ${jornadaPage === 0 ? 'text-zinc-800' : 'text-amber-500 hover:bg-amber-500/10'}`}
-                                                                >
-                                                                    <LayoutList className="w-3 h-3 rotate-180 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
-                                                                </button>
-                                                                <button 
-                                                                    onClick={() => setJornadaPage(p => Math.min(Math.ceil(optimisticQuests.length / questsPerPage) - 1, p + 1))}
-                                                                    disabled={jornadaPage >= Math.ceil(optimisticQuests.length / questsPerPage) - 1}
-                                                                    className={`p-2 rounded-lg transition-all ${jornadaPage >= Math.ceil(optimisticQuests.length / questsPerPage) - 1 ? 'text-zinc-800' : 'text-amber-500 hover:bg-amber-500/10'}`}
-                                                                >
-                                                                    <LayoutList className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
-                                                                </button>
-                                                            </div>
+                                        <div className="space-y-6 flex-1 overflow-hidden flex flex-col pr-2 custom-scrollbar">
+                                            {optimisticQuests.length > 0 ? (
+                                                <div className="pt-2 flex-1 flex flex-col">
+                                                    <div className="flex items-center justify-between mb-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <Award className="w-5 h-5 text-amber-500" />
+                                                            <h3 className="text-xs font-black tracking-[0.3em] text-slate-500 uppercase">Log de Missões Diárias</h3>
                                                         </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="grid grid-cols-1 gap-4">
-                                                    {optimisticQuests.slice(jornadaPage * questsPerPage, (jornadaPage + 1) * questsPerPage).map((quest) => {
-                                                        const isCompleted = quest.completed || quest.status === 'completed';
-                                                        const hasGlitch = glitchActive === quest.id;
                                                         
-                                                        return (
-                                                            <motion.div
-                                                                key={quest.id}
-                                                                animate={hasGlitch ? {
-                                                                    x: [0, -2, 2, -1, 1, 0],
-                                                                    filter: ["none", "hue-rotate(90deg) brightness(1.5)", "none"],
-                                                                } : {}}
-                                                                transition={hasGlitch ? { repeat: Infinity, duration: 0.1 } : {}}
-                                                                className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden group ${
-                                                                    isCompleted 
-                                                                        ? 'bg-emerald-500/5 border-emerald-500/20 opacity-60' 
-                                                                        : 'bg-white/[0.02] border-white/5 hover:border-white/10'
-                                                                } ${hasGlitch ? 'border-red-500/50 bg-red-500/10' : ''}`}
-                                                            >
-                                                                {/* Overlay de Cooldown */}
-                                                                {isCooldown && !isCompleted && !hasGlitch && (
-                                                                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-20 flex items-center justify-center">
-                                                                        <span className="text-[10px] font-black text-white tracking-[0.3em] animate-pulse">
-                                                                            [ RECALIBRATING UPLINK... ]
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Texto de Erro de Glitch */}
-                                                                {hasGlitch && (
-                                                                    <div className="absolute top-2 right-4 z-20">
-                                                                        <span className="text-[8px] font-black text-red-500 tracking-tighter">
-                                                                            [ UPLINK FAILED: XP REVERTED ]
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-
-                                                                <div className="flex items-start justify-between relative z-10">
-                                                                    <div className="flex-1 pr-8">
-                                                                        <div className="flex items-center gap-2 mb-2">
-                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border tracking-tighter uppercase ${
-                                                                                isCompleted ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-500'
-                                                                            }`}>
-                                                                                {quest.type}
-                                                                            </span>
-                                                                            <span className="text-[9px] font-mono text-slate-600 uppercase tracking-tighter">
-                                                                                Setor: {quest.id.slice(0, 8)}
-                                                                            </span>
-                                                                        </div>
-                                                                        <h3 className={`text-sm font-black tracking-tight mb-2 ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-200 group-hover:text-cyan-400 transition-colors'}`}>
-                                                                            {quest.title}
-                                                                        </h3>
-                                                                        <p className="text-[11px] text-slate-500 leading-relaxed font-medium mb-4">
-                                                                            {quest.description}
-                                                                        </p>
-                                                                        
-                                                                        <div className="flex items-center gap-4">
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
-                                                                                <span className="text-[10px] font-black text-cyan-500 italic">+{quest.xp_reward} XP</span>
-                                                                            </div>
-                                                                            <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{quest.stack_name}</span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <button
-                                                                        onClick={() => handleCompleteQuest(quest.id, quest.xp_reward, quest.stack_name || '', quest.stack_id || '')}
-                                                                        disabled={isCompleted || isPending || isCooldown}
-                                                                        className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all ${
-                                                                            isCompleted 
-                                                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
-                                                                                : 'bg-white/5 border-white/10 text-slate-600 hover:border-cyan-500/50 hover:text-cyan-400 hover:scale-110 active:scale-95'
-                                                                        } disabled:cursor-not-allowed`}
+                                                        {optimisticQuests.length > questsPerPage && (
+                                                            <div className="flex items-center gap-4">
+                                                                <span className="text-[9px] font-mono font-black text-zinc-600 uppercase tracking-widest">
+                                                                    Página {jornadaPage + 1} de {Math.ceil(optimisticQuests.length / questsPerPage)}
+                                                                </span>
+                                                                <div className="flex gap-1">
+                                                                    <button 
+                                                                        onClick={() => setJornadaPage(p => Math.max(0, p - 1))}
+                                                                        disabled={jornadaPage === 0}
+                                                                        className={`p-2 rounded-lg transition-all ${jornadaPage === 0 ? 'text-zinc-800' : 'text-amber-500 hover:bg-amber-500/10'}`}
                                                                     >
-                                                                        {isCompleted ? (
-                                                                            <Check className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
-                                                                        ) : (
-                                                                            <Zap className="w-4 h-4 ml-0.5 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
-                                                                        )}
+                                                                        <LayoutList className="w-3 h-3 rotate-180 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => setJornadaPage(p => Math.min(Math.ceil(optimisticQuests.length / questsPerPage) - 1, p + 1))}
+                                                                        disabled={jornadaPage >= Math.ceil(optimisticQuests.length / questsPerPage) - 1}
+                                                                        className={`p-2 rounded-lg transition-all ${jornadaPage >= Math.ceil(optimisticQuests.length / questsPerPage) - 1 ? 'text-zinc-800' : 'text-amber-500 hover:bg-amber-500/10'}`}
+                                                                    >
+                                                                        <LayoutList className="w-3 h-3 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
                                                                     </button>
                                                                 </div>
-                                                            </motion.div>
-                                                        );
-                                                    })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 gap-4 overflow-y-auto">
+                                                        {optimisticQuests.slice(jornadaPage * questsPerPage, (jornadaPage + 1) * questsPerPage).map((quest) => {
+                                                            const isCompleted = quest.completed || quest.status === 'completed';
+                                                            const hasGlitch = glitchActive === quest.id;
+                                                            
+                                                            return (
+                                                                <motion.div
+                                                                    key={quest.id}
+                                                                    animate={hasGlitch ? {
+                                                                        x: [0, -2, 2, -1, 1, 0],
+                                                                        filter: ["none", "hue-rotate(90deg) brightness(1.5)", "none"],
+                                                                    } : {}}
+                                                                    transition={hasGlitch ? { repeat: Infinity, duration: 0.1 } : {}}
+                                                                    className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden group ${
+                                                                        isCompleted 
+                                                                            ? 'bg-emerald-500/5 border-emerald-500/20 opacity-60' 
+                                                                            : 'bg-white/[0.02] border-white/5 hover:border-white/10'
+                                                                    } ${hasGlitch ? 'border-red-500/50 bg-red-500/10' : ''}`}
+                                                                >
+                                                                    <div className="flex items-start justify-between relative z-10">
+                                                                        <div className="flex-1 pr-8">
+                                                                            <div className="flex items-center gap-2 mb-2">
+                                                                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border tracking-tighter uppercase ${
+                                                                                    isCompleted ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-500'
+                                                                                }`}>
+                                                                                    {quest.type}
+                                                                                </span>
+                                                                            </div>
+                                                                            <h3 className={`text-sm font-black tracking-tight mb-2 ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-200 group-hover:text-cyan-400 transition-colors'}`}>
+                                                                                {quest.title}
+                                                                            </h3>
+                                                                            <p className="text-[11px] text-slate-500 leading-relaxed font-medium mb-4">
+                                                                                {quest.description}
+                                                                            </p>
+                                                                            
+                                                                            <div className="flex items-center gap-4">
+                                                                                <div className="flex items-center gap-1.5">
+                                                                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
+                                                                                    <span className="text-[10px] font-black text-cyan-500 italic">+{quest.xp_reward} XP</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <button
+                                                                            onClick={() => handleCompleteQuest(quest.id, quest.xp_reward, quest.stack_name || '', quest.stack_id || '')}
+                                                                            disabled={isCompleted || isPending || isCooldown}
+                                                                            className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all ${
+                                                                                isCompleted 
+                                                                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
+                                                                                    : 'bg-white/5 border-white/10 text-slate-600 hover:border-cyan-500/50 hover:text-cyan-400 hover:scale-110 active:scale-95'
+                                                                            } disabled:cursor-not-allowed`}
+                                                                        >
+                                                                            {isCompleted ? (
+                                                                                <Check className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
+                                                                            ) : (
+                                                                                <Zap className="w-4 h-4 ml-0.5 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
+                                                                </motion.div>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            ) : (
+                                                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden rounded-[3rem] border border-white/5 bg-white/[0.01]">
+                                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.05)_0%,transparent_70%)]" />
+                                                    
+                                                    <div className="w-64 h-64 mb-8 relative">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                                                                { subject: 'BIO', A: 120, fullMark: 150 },
+                                                                { subject: 'CODE', A: 98, fullMark: 150 },
+                                                                { subject: 'VIBE', A: 86, fullMark: 150 },
+                                                                { subject: 'SYNC', A: 99, fullMark: 150 },
+                                                                { subject: 'XP', A: 85, fullMark: 150 },
+                                                            ]}>
+                                                                <PolarGrid stroke="#ffffff10" />
+                                                                <Radar
+                                                                    name="AstroScan"
+                                                                    dataKey="A"
+                                                                    stroke="#06b6d4"
+                                                                    fill="#06b6d4"
+                                                                    fillOpacity={0.1}
+                                                                />
+                                                            </RadarChart>
+                                                        </ResponsiveContainer>
+                                                        <motion.div 
+                                                            animate={{ rotate: 360 }}
+                                                            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                                                            className="absolute inset-0 border border-cyan-500/20 rounded-full border-dashed"
+                                                        />
+                                                    </div>
+
+                                                    <h3 className="text-lg font-black text-white tracking-[0.3em] uppercase mb-2">Busca de Alvos Neural</h3>
+                                                    <p className="text-[10px] text-slate-500 max-w-md mx-auto mb-8 font-mono leading-relaxed px-4">
+                                                        O AstroKernel não detectou missões ativas no seu quadrante atual.
+                                                        Inicie um escaneamento profundo para sincronizar quests com seu biorritmo técnico.
+                                                    </p>
+
+                                                    <button 
+                                                        className="group relative px-12 py-4 bg-cyan-500 text-black text-[11px] font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-cyan-400 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] overflow-hidden"
+                                                    >
+                                                        <span className="relative z-10 flex items-center gap-3">
+                                                            <Play className="w-3 h-3 fill-current" />
+                                                            Sincronizar Missões
+                                                        </span>
+                                                        <motion.div 
+                                                            className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"
+                                                            animate={{ x: ['-100%', '100%'] }}
+                                                            transition={{ duration: 1.5, repeat: Infinity }}
+                                                        />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </Suspense>
+                                </div>
+                            )}
+
+
+                            {activeTab === 'AURA' && (
+                                <div className="h-full flex flex-col gap-6 py-4 px-2 overflow-y-auto custom-scrollbar">
+                                    <h3 className="text-[10px] font-black tracking-[0.3em] text-slate-500 uppercase mb-2">Neural Link & Biorhythm</h3>
+                                    
+                                    {/* Biorhythm Section */}
+                                    <div className="p-6 rounded-[2rem] border border-white/5 bg-white/[0.01] backdrop-blur-md">
+                                        <BiorhythmWidget userId={userId} />
+                                    </div>
+
+                                    {/* Neural Graph / Aura Visualization Placeholder */}
+                                    <div className="p-10 rounded-[2rem] border border-cyan-500/10 bg-cyan-500/[0.02] flex flex-col items-center justify-center text-center gap-6 min-h-[350px] relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.1)_0%,transparent_70%)] animate-pulse" />
+                                        
+                                        <div className="relative w-40 h-40 rounded-full border-2 border-dashed border-cyan-500/20 flex items-center justify-center animate-[spin_30s_linear_infinite]">
+                                            <div className="w-32 h-32 rounded-full border border-cyan-500/40 flex items-center justify-center animate-[pulse_4s_ease-in-out_infinite]">
+                                                <Zap className="w-10 h-10 text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="relative z-10">
+                                            <h4 className="text-sm font-black text-white tracking-[0.4em] uppercase mb-1">Campo de Aura Perceptível</h4>
+                                            <p className="text-[10px] text-slate-500 font-mono italic">Sincronia Estável a {initialData?.telemetry?.sync || 85}%</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-12 mt-4 w-full max-w-md relative z-10">
+                                            <div className="text-center">
+                                                <div className="text-xs font-black text-cyan-400">0.8Hz</div>
+                                                <div className="text-[8px] text-slate-600 uppercase font-mono tracking-tighter">Ondas Theta</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-xs font-black text-emerald-400">14Hz</div>
+                                                <div className="text-[8px] text-slate-600 uppercase font-mono tracking-tighter">Ondas Alpha</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-xs font-black text-amber-400">22Hz</div>
+                                                <div className="text-[8px] text-slate-600 uppercase font-mono tracking-tighter">Ondas Beta</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Scanlines Effect */}
+                                        <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
+                                    </div>
                                 </div>
                             )}
                         </motion.div>
