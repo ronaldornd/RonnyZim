@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAstralXpMultiplier } from '@/lib/astral';
 import { getAIProvider } from '@/lib/ai/ai-factory';
+import { GoogleGenAI, Schema, Type } from '@google/genai';
+import { XPService } from '@/lib/services/xp-service';
 
 // Injetado via Factory no POST
 
@@ -122,7 +124,6 @@ export async function POST(req: Request) {
                 validation.xpMultiplier = xpMultiplier;
             }
 
-import { XPService } from '@/lib/services/xp-service';
 
             // 6. Grant XP (with astral multiplier applied via XPService)
             const stackNames = (quest.target_stack as string).split(',').map(s => s.trim()).filter(Boolean);
