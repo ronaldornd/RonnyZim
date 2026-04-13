@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/browser';
 import LockScreen from './LockScreen';
 import UpdatePasswordScreen from './UpdatePasswordScreen';
-import { useBootSequence } from '@/lib/hooks/useBootSequence';
+import { useBootSequence } from '@/hooks/useBootSequence';
 import BootSequence from '../onboarding/BootSequence';
 import { AnimatePresence, motion } from 'framer-motion';
 

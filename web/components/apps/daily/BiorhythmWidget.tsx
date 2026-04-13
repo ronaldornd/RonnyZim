@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Zap, Sparkles, Moon, Sun, Activity } from 'lucide-react';
-import { useBiorhythm } from '@/lib/hooks/useBiorhythm';
+import { useBiorhythm } from '@/hooks/useBiorhythm';
 
 interface BiorhythmWidgetProps {
     userId?: string;

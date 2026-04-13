@@ -1,37 +1,36 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI, Type, Schema } from '@google/genai';
+import { Type, Schema, GoogleGenAI } from '@google/genai';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { getAIProvider } from '@/lib/ai/ai-factory';
 
 const interviewSchema: Schema = {
     type: Type.OBJECT,
     properties: {
         transcribed_user_text: {
             type: Type.STRING,
-            description: "A transcrição literal ou resumida do que o usuário disse no áudio.",
+            description: "A transcrio literal ou resumida do que o usurio disse no udio.",
         },
         evaluation_score: {
             type: Type.INTEGER,
-            description: "De 0 a 100, baseado na precisão técnica e confiança demonstrada.",
+            description: "De 0 a 100, baseado na preciso tcnica e confiana demonstrada.",
         },
         feedback: {
             type: Type.STRING,
-            description: "Feedback curto, direto e levemente irônico sobre a resposta.",
+            description: "Feedback curto, direto e levemente irnico sobre a resposta.",
         },
         next_question: {
             type: Type.STRING,
-            description: "A próxima pergunta técnica difícil, baseada no contexto da vaga e nas lacunas do usuário.",
+            description: "A prxima pergunta tcnica difcil, baseada no contexto da vaga e nas lacunas do usurio.",
         },
         redemption_quest: {
             type: Type.OBJECT,
             nullable: true,
-            description: "OBRIGATÓRIO se evaluation_score < 60. Um desafio técnico prático para corrigir o erro do usuário.",
+            description: "OBRIGATRIO se evaluation_score < 60. Um desafio tcnico prtico para corrigir o erro do usurio.",
             properties: {
-                title: { type: Type.STRING, description: "Título agressivo estilo RPG, ex: '[REDENÇÃO] Domínio de Hooks Reativos'" },
-                description: { type: Type.STRING, description: "Dossiê técnico denso com briefing de erro e exatamente 4 passos de execução detalhados." },
+                title: { type: Type.STRING, description: "Ttulo agressivo estilo RPG, ex: '[REDENO] Domnio de Hooks Reativos'" },
+                description: { type: Type.STRING, description: "Dossi tcnico denso com briefing de erro e exatamente 4 passos de execuo detalhados." },
                 target_stack: { type: Type.STRING, description: "Tecnologia principal (React, Node, etc)" },
-                xp_reward: { type: Type.INTEGER, description: "Sempre 100 para redenção." }
+                xp_reward: { type: Type.INTEGER, description: "Sempre 100 para redeno." }
             },
             required: ["title", "description", "target_stack", "xp_reward"]
         }
@@ -41,22 +40,22 @@ const interviewSchema: Schema = {
 
 export async function POST(req: Request) {
     try {
-        const { audioBase64, jobDescription, gapAnalysis, history = [], userName = 'Operador', modelId: localModelId } = await req.json();
+        const { audioBase64, jobDescription, gapAnalysis, history = [], userName = 'Operador' } = await req.json();
 
         if (!audioBase64) {
-            return NextResponse.json({ error: 'Faltando áudio para processamento.' }, { status: 400 });
+            return NextResponse.json({ error: 'Faltando udio para processamento.' }, { status: 400 });
         }
 
         const supabase = await createRouteHandlerClient();
         const { data: { user } } = await supabase.auth.getUser();
 
-        let modelId = localModelId || 'gemini-1.5-flash'; // Fallback base
-        if (user) {
-            const { data: facts } = await supabase.from('user_facts').select('value').eq('user_id', user.id).eq('property_key', 'preferred_ai_model').limit(1);
-            if (facts && facts.length > 0 && facts[0].value) {
-                modelId = facts[0].value;
-            }
+        if (!user) {
+            return NextResponse.json({ error: 'Usurio no autenticado.' }, { status: 401 });
         }
+
+        // 1. Resolve AI Config via Factory
+        const { apiKey, modelId } = await getAIProvider(user.id);
+        const ai = new GoogleGenAI({ apiKey });
 
         const callGemini = async (targetModel: string) => {
             const result = await ai.models.generateContent({
@@ -66,13 +65,13 @@ export async function POST(req: Request) {
                         role: 'user',
                         parts: [
                             {
-                                text: `USUÁRIO ATUAL: ${userName}.
+                                text: `USURIO ATUAL: ${userName}.
                                 CONTEXTO DA VAGA: ${jobDescription}. 
-                                LACUNAS TÉCNICAS DO USUÁRIO: ${JSON.stringify(gapAnalysis)}.
-                                HISTÓRICO DA ENTREVISTA: ${JSON.stringify(history)}.
+                                LACUNAS TCNICAS DO USURIO: ${JSON.stringify(gapAnalysis)}.
+                                HISTRICO DA ENTREVISTA: ${JSON.stringify(history)}.
                                 
-                                Analise a resposta em áudio do usuário. Seja o HunterZim: direto e implacável.
-                                Se ele falhou feio (score < 60), você DEVE preencher o campo 'redemption_quest' com um desafio de código prático.`
+                                Analise a resposta em udio do usurio. Seja o HunterZim: direto e implacvel.
+                                Se ele falhou feio (score < 60), voc DEVE preencher o campo 'redemption_quest' com um desafio de cdigo prtico.`
                             },
                             {
                                 inlineData: {
@@ -84,9 +83,9 @@ export async function POST(req: Request) {
                     }
                 ],
                 config: {
-                    systemInstruction: `Você é o HunterZim, recrutador técnico implacável da RonnyZim OS. 
-                    Chame o usuário pelo nome: ${userName}. 
-                    Sua missão é testar o DNA técnico. Se o ${userName} errar algo básico, dê uma nota baixa e crie uma Missão de Redenção rica em detalhes técnicos no Knowledge Nexus via 'redemption_quest'. O campo 'description' da quest deve ser um mini-dossiê com 4 passos claros.`,
+                    systemInstruction: `Voc o HunterZim, recrutador tcnico implacvel da RonnyZim OS. 
+                    Chame o usurio pelo nome: ${userName}. 
+                    Sua misso  testar o DNA tcnico. Se o ${userName} errar algo bsico, d uma nota baixa e crie uma Misso de Redeno rica em detalhes tcnicos no Knowledge Nexus via 'redemption_quest'. O campo 'description' da quest deve ser um mini-dossi com 4 passos claros.`,
                     responseMimeType: "application/json",
                     responseSchema: interviewSchema,
                 }
@@ -96,32 +95,27 @@ export async function POST(req: Request) {
 
         let responseText;
         try {
+            // Usa o modelo preferido do usurio (j mapeado para um estvel se necessrio)
             responseText = await callGemini(modelId);
         } catch (err: any) {
-            console.warn(`Modelo primário ${modelId} falhou (${err.message}). Tentando fallback para gemini-3.1-pro-preview...`);
+            console.warn(`Modelo primrio ${modelId} falhou (${err.message}). Tentando fallback para gemini-1.5-flash...`);
             try {
-                // Se o erro foi no 3.1-pro, tenta o flash-lite antes de desistir
-                const fallbackModel = modelId === 'gemini-3.1-pro-preview' ? 'gemini-3.1-flash-lite-preview' : 'gemini-3.1-pro-preview';
-                responseText = await callGemini(fallbackModel);
+                // Fallback seguro de ltima instncia
+                responseText = await callGemini('gemini-1.5-flash');
             } catch (fallbackErr: any) {
-                console.warn(`Fallback ${modelId === 'gemini-3.1-pro-preview' ? '3.1-flash-lite' : '3.1-pro'} falhou. Tentando último recurso: gemini-2.5-pro...`);
-                try {
-                    responseText = await callGemini('gemini-2.5-pro');
-                } catch (finalErr: any) {
-                    throw new Error(`Todos os modelos falharam na simulação crítica. Erro final: ${finalErr.message}`);
-                }
+                throw new Error(`Todos os modelos falharam na simulao crtica. Erro final: ${fallbackErr.message}`);
             }
         }
 
         if (!responseText) {
-            throw new Error("Gemini retornou resposta vazia após todas as tentativas.");
+            throw new Error("Gemini retornou resposta vazia aps todas as tentativas.");
         }
 
         const parsedResponse = JSON.parse(responseText);
         let questGenerated = false;
 
-        // Se houver uma quest de redenção e um usuário logado, salva no Supabase
-        if (parsedResponse.evaluation_score < 60 && parsedResponse.redemption_quest && user) {
+        // Se houver uma quest de redeno e um usurio logado, salva no Supabase
+        if (parsedResponse.evaluation_score < 60 && parsedResponse.redemption_quest) {
             const { error: questError } = await supabase
                 .from('daily_quests')
                 .insert({
@@ -136,7 +130,7 @@ export async function POST(req: Request) {
             if (!questError) {
                 questGenerated = true;
             } else {
-                console.error("Erro ao inserir quest de redenção:", questError);
+                console.error("Erro ao inserir quest de redeno:", questError);
             }
         }
 

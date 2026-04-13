@@ -1,7 +1,7 @@
 import { createRouteHandlerClient } from '@/lib/supabase/server';
 import AuthGuard from '@/components/auth/AuthGuard';
 import DesktopShell from '@/components/os/DesktopShell';
-import { getProfileData } from '@/app/actions/profile';
+import { getProfileDataAction } from '@/app/actions/os';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,7 +12,7 @@ export default async function Home() {
     
     const userId = user?.id || "";
     // Inicia a promise de dados (Next.js 16/Streaming pattern)
-    const profilePromise = getProfileData(userId);
+    const profilePromise = getProfileDataAction(userId);
     const profileData = await profilePromise;
     
     // Se não estiver calibrado, força Genesis.

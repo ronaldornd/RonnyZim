@@ -71,19 +71,27 @@ export async function getProfileDataAction(userId: string) {
   const requiredKeys = ['display_name', 'profile_title', 'birth_date', 'birth_time', 'birth_city', 'seniority', 'system_calibration_answer'];
   let filledCount = 0;
   rawFacts?.forEach(f => {
-    if (requiredKeys.includes(f.property_key) && f.value) filledCount++;
+    if (requiredKeys.includes(f.property_key) && f.value && String(f.value).trim() !== '') filledCount++;
   });
+  
+  // Integridade baseada no preenchimento do perfil (0-100)
   const integrity = Math.round((filledCount / requiredKeys.length) * 100);
+  
+  // Sincronia baseada no progresso das stacks (Exemplo: média dos níveis / 5 * 100, limitado a 100)
+  const averageLevel = mastery && mastery.length > 0 
+    ? mastery.reduce((acc, s) => acc + s.current_level, 0) / mastery.length 
+    : 1;
+  const sync = Math.min(100, Math.round((averageLevel / 10) * 100) + 20); // Baseline de 20% + evolução
 
   return {
     stacks: mastery || [],
     facts: facts,
-    quests: activeQuests || [],
-    completedQuests: completedQuests || [],
+    quests: (activeQuests || []).map(q => ({ ...q, completed: q.status === 'completed' })),
+    completedQuests: (completedQuests || []).map(q => ({ ...q, completed: true })),
     telemetry: {
-      integrity: parseInt(facts.telemetry_integrity) || integrity,
-      sync: parseInt(facts.telemetry_sync) || 85,
-      bioSummary: facts.telemetry_biosummary || `Operador de nível ${facts.level} em fase de calibração.`
+      integrity: Number(facts.telemetry_integrity) || integrity,
+      sync: Number(facts.telemetry_sync) || sync,
+      bioSummary: facts.telemetry_biosummary || `Operador de nível ${facts.level || 'ZIM'} em fase de calibração ativa.`
     },
     isCalibrated: facts['system_calibration_answer'] === 'completed'
   };

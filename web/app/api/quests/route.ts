@@ -31,6 +31,8 @@ export async function GET(req: Request) {
     }
 }
 
+import { XPService } from '@/lib/services/xp-service';
+
 export async function POST(req: Request) {
     try {
         const supabaseAdmin = createAdminClient();
@@ -64,73 +66,17 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Falha ao atualizar status da quest' }, { status: 500 });
         }
 
-        // 3. Processar XP no user_stack_mastery
-        // Split target_stack by comma or dot to support multi-stack quests like "Node.js. TypeScript. SQL"
+        // 3. Processar XP via XPService
         const rawStackNames = questData.target_stack as string;
-        // Regex split: vírgula ou ponto (que não seja o .js do Node.js)
-        // Mais seguro: split por vírgula ou por " . " ou ", "
         const stackNames = rawStackNames.split(/[,\.]\s+/).map((s: string) => s.trim()).filter(Boolean);
         const rewardXp = questData.xp_reward;
-        // Distribute XP evenly across all stacks
         const xpPerStack = Math.max(1, Math.floor(rewardXp / stackNames.length));
 
-        // Helper: resolve or auto-create a global_stack, and apply XP to mastery
-        const applyXpToStack = async (stackName: string, xp: number) => {
-            let stackId: string | undefined;
+        // Aplicar XP em todas as stacks em paralelo usando o serviço unificado
+        const results = await Promise.all(
+            stackNames.map(name => XPService.applyXpToStack(supabaseAdmin, userId, name, xpPerStack))
+        );
 
-            const { data: found } = await supabaseAdmin
-                .from('global_stacks')
-                .select('id')
-                .ilike('name', stackName)
-                .maybeSingle();
-
-            if (found?.id) {
-                stackId = found.id;
-            } else {
-                const { data: created } = await supabaseAdmin
-                    .from('global_stacks')
-                    .insert({ name: stackName, category: 'AI Generated', icon_slug: stackName.toLowerCase() })
-                    .select('id')
-                    .single();
-                stackId = created?.id;
-            }
-
-            if (!stackId) return { leveledUp: false, newLevel: 0 };
-
-
-            const { data: masteryData } = await supabaseAdmin
-                .from('user_stack_mastery')
-                .select('id, current_xp, current_level')
-                .eq('user_id', userId)
-                .eq('stack_id', stackId)
-                .maybeSingle();
-
-            if (masteryData) {
-                let newXp = masteryData.current_xp + xp;
-                let currentLevel = masteryData.current_level;
-                let leveledUp = false;
-                while (true) {
-                    const needed = currentLevel * 100;
-                    if (newXp >= needed) { newXp -= needed; currentLevel++; leveledUp = true; }
-                    else break;
-                }
-                await supabaseAdmin
-                    .from('user_stack_mastery')
-                    .update({ current_xp: newXp, current_level: currentLevel })
-                    .eq('id', masteryData.id);
-                return { leveledUp, newLevel: currentLevel };
-            } else {
-                const newLevel = xp >= 100 ? 2 : 1;
-                const remainingXp = xp >= 100 ? xp - 100 : xp;
-                await supabaseAdmin
-                    .from('user_stack_mastery')
-                    .insert({ user_id: userId, stack_id: stackId, current_level: newLevel, current_xp: remainingXp, is_active: true });
-                return { leveledUp: newLevel > 1, newLevel };
-            }
-        }
-
-        // Run XP for all stacks in parallel
-        const results = await Promise.all(stackNames.map(name => applyXpToStack(name, xpPerStack)));
         const anyLevelUp = results.some(r => r.leveledUp);
         const levelUps = results.filter(r => r.leveledUp).map((_, i) => stackNames[i]);
 

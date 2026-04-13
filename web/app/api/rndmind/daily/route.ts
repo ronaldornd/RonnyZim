@@ -1,8 +1,8 @@
-import { GoogleGenAI, Type } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
+import { getAIProvider } from '@/lib/ai/ai-factory';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Injetado via Factory no request
 
 const cardSchema = {
     type: Type.OBJECT,
@@ -47,19 +47,22 @@ export async function GET(request: Request) {
         const rawBirthTime = searchParams.get('birthTime'); // HH:mm
         const rawBirthCity = searchParams.get('birthCity'); // e.g. "São Paulo, SP, Brasil"
 
-        let chatModel = 'gemini-3-flash-preview';
+        let apiKey = process.env.GEMINI_API_KEY!;
+        let modelId = 'gemini-2.0-flash';
+
         try {
             const supabase = await createRouteHandlerClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                const { data: facts } = await supabase.from('user_facts').select('value').eq('user_id', user.id).eq('property_key', 'preferred_ai_model').limit(1);
-                if (facts && facts.length > 0 && facts[0].value) {
-                    chatModel = facts[0].value;
-                }
+                const aiConfig = await getAIProvider(user.id);
+                apiKey = aiConfig.apiKey;
+                modelId = aiConfig.modelId;
             }
         } catch (e) {
-            console.error('Failed to resolve preferred model', e);
+            console.error('Failed to resolve AI Config from factory', e);
         }
+
+        const ai = new GoogleGenAI({ apiKey });
 
         const today = new Date().toISOString();
         const todayFormatted = new Date().toLocaleDateString('pt-BR', {
@@ -117,7 +120,7 @@ Assign a "technical_affinity" multiplier (0.8 to 1.2) for each category based on
 Gere exatamente 5 cards de insight no formato JSON, em português brasileiro, sendo extremamente direto e "pé no chão".`;
 
         const response = await ai.models.generateContent({
-            model: chatModel,
+            model: modelId,
             contents: [{ role: 'user', parts: [{ text: 'Generate my astro-analytical daily dashboard for today.' }] }],
             config: {
                 systemInstruction: systemPrompt,

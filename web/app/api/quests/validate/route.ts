@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI, Type, Schema } from '@google/genai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAstralXpMultiplier } from '@/lib/astral';
+import { getAIProvider } from '@/lib/ai/ai-factory';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Injetado via Factory no POST
 
 const validationSchema: Schema = {
     type: Type.OBJECT,
@@ -67,9 +67,12 @@ export async function POST(req: Request) {
             }
         }
 
-        // 3. Validate with Gemini
+        // 3. Resolve AI Config via Factory
+        const { apiKey, modelId } = await getAIProvider(userId);
+        const ai = new GoogleGenAI({ apiKey });
+
         const result = await ai.models.generateContent({ 
-            model: "gemini-3-flash-preview",
+            model: modelId,
             contents: [{ role: 'user', parts: [{ text: `
             Você é um Auditor de Código e Instrutor Técnico do RonnyZim OS.
             Sua missão é validar se o usuário realmente completou o objetivo técnico abaixo.
@@ -119,43 +122,16 @@ export async function POST(req: Request) {
                 validation.xpMultiplier = xpMultiplier;
             }
 
-            // 6. Grant XP (with astral multiplier applied)
+import { XPService } from '@/lib/services/xp-service';
+
+            // 6. Grant XP (with astral multiplier applied via XPService)
             const stackNames = (quest.target_stack as string).split(',').map(s => s.trim()).filter(Boolean);
             const baseXpPerStack = Math.max(1, Math.floor(quest.xp_reward / stackNames.length));
 
-            const applyXpToStack = async (stackName: string, xp: number) => {
-                let stackId: string | undefined;
-                const { data: found } = await supabaseAdmin.from('global_stacks').select('id').ilike('name', stackName).maybeSingle();
-                if (found?.id) stackId = found.id;
-                else {
-                    const { data: created } = await supabaseAdmin.from('global_stacks').insert({ name: stackName, category: 'AI Generated', icon_slug: stackName.toLowerCase() }).select('id').single();
-                    stackId = created?.id;
-                }
-                if (!stackId) return { leveledUp: false };
-
-                // Per-stack astral multiplier (buff only applies if this specific stack matches)
-                const { multiplier: stackMultiplier } = getAstralXpMultiplier(stackName, astralState);
-                const finalXp = Math.round(xp * stackMultiplier);
-
-                const { data: mastery } = await supabaseAdmin.from('user_stack_mastery').select('id, current_xp, current_level').eq('user_id', userId).eq('stack_id', stackId).maybeSingle();
-
-                if (mastery) {
-                    let newXp = mastery.current_xp + finalXp;
-                    let currentLevel = mastery.current_level;
-                    let leveledUp = false;
-                    while (newXp >= currentLevel * 100) { newXp -= currentLevel * 100; currentLevel++; leveledUp = true; }
-                    await supabaseAdmin.from('user_stack_mastery').update({ current_xp: newXp, current_level: currentLevel }).eq('id', mastery.id);
-                    return { leveledUp };
-                } else {
-                    const leveledUp = finalXp >= 100;
-                    const newLevel = leveledUp ? 2 : 1;
-                    const remXp = leveledUp ? finalXp - 100 : finalXp;
-                    await supabaseAdmin.from('user_stack_mastery').insert({ user_id: userId, stack_id: stackId, current_level: newLevel, current_xp: remXp, is_active: true });
-                    return { leveledUp };
-                }
-            };
-
-            await Promise.all(stackNames.map(name => applyXpToStack(name, baseXpPerStack)));
+            await Promise.all(stackNames.map(async (name) => {
+                const { multiplier: stackMultiplier } = getAstralXpMultiplier(name, astralState);
+                return XPService.applyXpToStack(supabaseAdmin, userId, name, baseXpPerStack, stackMultiplier);
+            }));
         }
 
         return NextResponse.json(validation);

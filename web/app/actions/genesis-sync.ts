@@ -3,8 +3,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 import { revalidateTag, revalidatePath } from "next/cache";
+import { getAIProvider } from "@/lib/ai/ai-factory";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Injetado via Factory dentro da action
 
 const genesisSyncSchema: Schema = {
     type: Type.OBJECT,
@@ -91,8 +92,12 @@ export async function genesisSyncAction(userId: string) {
         3. Criar EXATAMENTE 3 missões diárias de código ou carreira baseadas nas Stacks ativas e na intuição astral do dia. Type deve ser 'HARD_SKILL', 'SOFT_SKILL' ou 'AURA'. xp_reward entre 10 e 100. target_stack string (nome da tech).
     `;
 
+    // 3. Resolve AI Config via Factory
+    const { apiKey, modelId } = await getAIProvider(userId);
+    const ai = new GoogleGenAI({ apiKey });
+
     const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: modelId,
         contents: [
             { role: 'user', parts: [{ text: "Gere a sincronização inicial" }] }
         ],

@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAgentChat } from '@/lib/hooks/useAgentChat';
+import { useAgentChat } from '@/hooks/useAgentChat';
+import { useCyberSFX } from '@/hooks/useCyberSFX';
 import { consumePendingAnalysis } from '@/lib/services/analysis';
 import GapCard from '@/components/chat/GapCard';
 import QuestGeneratedCard from '@/components/chat/QuestGeneratedCard';

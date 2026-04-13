@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI, Type, Schema } from '@google/genai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getAIProvider } from '@/lib/ai/ai-factory';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// O genAI agora é instanciado dinamicamente dentro do POST
 
 export async function POST(req: Request) {
     try {
@@ -14,15 +14,9 @@ export async function POST(req: Request) {
 
         const supabase = createAdminClient();
 
-        // 1. Get user preferences for AI model
-        const { data: userFact } = await supabase
-            .from('user_facts')
-            .select('value')
-            .eq('user_id', user_id)
-            .eq('property_key', 'preferred_ai_model')
-            .single();
-
-        const modelId = userFact?.value || 'gemini-2.0-flash';
+        // 1. Get AI Config via Factory
+        const { apiKey, modelId } = await getAIProvider(user_id);
+        const ai = new GoogleGenAI({ apiKey });
 
         // 2. Get current active quests for progression check
         const { data: currentQuests } = await supabase

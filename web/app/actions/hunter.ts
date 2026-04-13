@@ -4,6 +4,7 @@ import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { createStreamableValue } from "@ai-sdk/rsc";
 import { z } from "zod";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getAIProvider } from "@/lib/ai/ai-factory";
 
 // Schema para blindagem de entrada
 const SearchSchema = z.object({
@@ -19,7 +20,7 @@ interface TavilyResult {
   published_date?: string;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+// genAI agora é instanciado via Factory dentro de cada Action
 
 /**
  * AÇÃO: Busca ativa de vagas via MCP Tavily
@@ -85,7 +86,13 @@ export async function searchJobsAction(formData: FormData) {
  */
 export async function calculateMatchAction(jobContent: string, profileSummary: string) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const supabase = await createRouteHandlerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Usuário não autenticado");
+
+    const { apiKey, modelId } = await getAIProvider(user.id);
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: modelId });
     
     const prompt = `
       Analise o fit cultural e técnico entre este usuário e a vaga.
@@ -160,7 +167,13 @@ export async function analyzeInterviewAction(formData: FormData) {
 
     if (!audioFile) throw new Error("Áudio não detectado.");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const supabase = await createRouteHandlerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Usuário não autenticado");
+
+    const { apiKey, modelId } = await getAIProvider(user.id);
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: modelId });
     
     // Converter File para Base64 para o SDK do Gemini
     const arrayBuffer = await audioFile.arrayBuffer();

@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type, Schema } from '@google/genai';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getAIProvider } from '@/lib/ai/ai-factory';
 
 const cvSchema: Schema = {
     type: Type.OBJECT,
@@ -19,7 +19,7 @@ const cvSchema: Schema = {
 
 export async function POST(request: Request) {
     try {
-        const { job_requirements, strong_matches, missing_skills } = await request.json();
+        const { job_requirements, strong_matches, missing_skills, user_id } = await request.json();
 
         if (!job_requirements) {
             return new Response(JSON.stringify({ error: 'Missing requirements.' }), { status: 400 });
@@ -43,8 +43,14 @@ MISSING SKILLS:
 ${missing_skills?.join(', ') || 'N/A'}
 `;
 
+        const supabase = createAdminClient();
+
+        // 1. Resolve AI Config via Factory
+        const { apiKey, modelId } = await getAIProvider(user_id);
+        const ai = new GoogleGenAI({ apiKey });
+
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: modelId,
             contents: prompt,
             config: {
                 responseMimeType: "application/json",

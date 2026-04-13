@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/browser';
-import { useBootSequence } from '@/lib/hooks/useBootSequence';
+import { useBootSequence } from '@/hooks/useBootSequence';
 import { 
     Settings2, 
     Cpu, 

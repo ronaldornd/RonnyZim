@@ -13,7 +13,7 @@ import {
     Sparkles, 
     Star 
 } from 'lucide-react';
-import { useBiorhythm } from '@/lib/hooks/useBiorhythm';
+import { useBiorhythm } from '@/hooks/useBiorhythm';
 
 interface DailyQuest {
     id: string;

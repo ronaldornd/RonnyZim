@@ -508,11 +508,11 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                                     <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
                                                         <motion.div 
                                                             initial={{ width: 0 }}
-                                                            animate={{ width: `${initialData?.telemetry?.integrity ?? 4}%` }}
+                                                            animate={{ width: `${initialData?.telemetry?.integrity ?? 0}%` }}
                                                             className="h-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.3)]" 
                                                         />
                                                     </div>
-                                                    <span className="text-[10px] font-mono text-cyan-400">{initialData?.telemetry?.integrity ?? 4}%</span>
+                                                    <span className="text-[10px] font-mono text-cyan-400">{initialData?.telemetry?.integrity ?? 0}%</span>
                                                 </div>
                                             </div>
                                             <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
@@ -521,11 +521,11 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                                     <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
                                                         <motion.div 
                                                             initial={{ width: 0 }}
-                                                            animate={{ width: `${initialData?.telemetry?.sync ?? 12}%` }}
+                                                            animate={{ width: `${initialData?.telemetry?.sync ?? 0}%` }}
                                                             className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]" 
                                                         />
                                                     </div>
-                                                    <span className="text-[10px] font-mono text-blue-400">{initialData?.telemetry?.sync ?? 12}%</span>
+                                                    <span className="text-[10px] font-mono text-blue-400">{initialData?.telemetry?.sync ?? 0}%</span>
                                                 </div>
                                             </div>
                                          </div>
