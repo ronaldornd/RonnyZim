@@ -20,7 +20,7 @@ export async function POST(request: Request) {
             return new Response(JSON.stringify({ error: 'Missing required fields.' }), { status: 400 });
         }
 
-        const { model, provider } = await getAIProvider(user_id);
+        const { model, providerName, modelId } = await getAIProvider(user_id);
 
         const supabase = createAdminClient();
 
@@ -37,8 +37,7 @@ export async function POST(request: Request) {
         let targetAgentId = agent_id;
         let systemInstruction = dynamic_system_prompt || '';
 
-        // 2. Fetch User Context (Facts + AI Model Preference) early
-        let chatModel = 'gemini-2.0-flash'; // Default globals
+        // 2. Fetch User Context (Facts)
         let userContextStr = '';
         try {
             const [factsRes, masteryRes, questsRes, hunterRes, lastInterviewRes] = await Promise.all([
@@ -51,11 +50,7 @@ export async function POST(request: Request) {
 
             const facts = factsRes.data || [];
             
-            const modelFact = facts.find(f => f.property_key === 'preferred_ai_model');
-            if (modelFact && modelFact.value) {
-                chatModel = modelFact.value;
-                console.log(`📡 [Chat API] Usando modelo preferido: ${chatModel}`);
-            }
+            console.log(`📡 [Chat API] Motor provido pela AI Factory: ${providerName} | ${modelId}`);
 
             if (facts.length > 0) {
                 userContextStr += "\n\n### FATOS CONHECIDOS SOBRE O USUÁRIO:\n";
@@ -143,12 +138,10 @@ Rules:
 User's Latest Message: "${lastMessage}"
 `;
             try {
-                const { object } = await generateText({
+                const { object } = await generateObject({
                     model: model,
+                    schema: routingSchema,
                     messages: [{ role: 'user', content: routingPrompt }],
-                    experimental_output: {
-                        schema: routingSchema
-                    },
                     temperature: 0.1
                 });
 
@@ -202,7 +195,7 @@ User's Latest Message: "${lastMessage}"
                         category: z.string().describe('The category of this fact. E.g., career, emotional, habits, preference, identity, stack.'),
                         question_to_user: z.string().describe('The direct question to the user asking for the missing fact, in your persona tone.'),
                         importance: z.string().describe('High or medium priority flag.')
-                    }),
+                    })
                 }),
                 create_daily_quest: tool({
                     description: 'Generates a new daily quest/challenge for the user based on their skills or learning goals. Call this whenever the user asks for a challenge, study plan, or quest. Provide realistic XP rewards based on difficulty (e.g., 50 for easy, 100 for medium, 200 for hard).',
@@ -211,7 +204,7 @@ User's Latest Message: "${lastMessage}"
                         description: z.string().describe('Detailed instructions on what the user needs to build or analyze to complete the quest.'),
                         target_stack: z.string().describe('The specific technology stack this quest trains (e.g., React, Node.js, TypeScript, PostgreSQL).'),
                         xp_reward: z.number().describe('The amount of XP the user will earn upon completing this quest.')
-                    }),
+                    })
                 })
             }
         });
@@ -222,7 +215,7 @@ User's Latest Message: "${lastMessage}"
             if (call.toolName === 'declare_knowledge_gap') {
                 return new Response(JSON.stringify({
                     type: 'knowledge_gap',
-                    gapData: call.args
+                    gapData: (call as any).args
                 }), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' }
@@ -230,7 +223,7 @@ User's Latest Message: "${lastMessage}"
             }
             if (call.toolName === 'create_daily_quest') {
                 const adminClient = createAdminClient();
-                const qArgs = call.args as any;
+                const qArgs = (call as any).args as any;
                 
                 const { data: insertedQuest, error } = await adminClient.from('daily_quests').insert({
                     user_id: user_id,
