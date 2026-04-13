@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        const responseText = result.response.text();
+        const responseText = result.text || "";
         const jsonText = responseText.replace(/```json|```/gi, '').trim();
         
         if (!jsonText) {

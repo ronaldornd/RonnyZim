@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         
         try {
             const supabaseSession = await createRouteHandlerClient();
-            const { data: { user } } = await supabaseSession.auth.getSingleUser(); // Mais seguro que getUser
+            const { data: { user } } = await supabaseSession.auth.getUser();
             if (user) {
                 finalUserId = user.id;
             }

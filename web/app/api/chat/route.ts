@@ -1,4 +1,4 @@
-import { generateText, tool, jsonSchema } from 'ai';
+import { generateText, generateObject, tool, jsonSchema } from 'ai';
 import { getAIProvider } from '@/lib/ai/ai-factory';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
@@ -195,7 +195,8 @@ User's Latest Message: "${lastMessage}"
                         category: z.string().describe('The category of this fact. E.g., career, emotional, habits, preference, identity, stack.'),
                         question_to_user: z.string().describe('The direct question to the user asking for the missing fact, in your persona tone.'),
                         importance: z.string().describe('High or medium priority flag.')
-                    })
+                    }),
+                    execute: async () => ({ status: 'delegated' })
                 }),
                 create_daily_quest: tool({
                     description: 'Generates a new daily quest/challenge for the user based on their skills or learning goals. Call this whenever the user asks for a challenge, study plan, or quest. Provide realistic XP rewards based on difficulty (e.g., 50 for easy, 100 for medium, 200 for hard).',
@@ -204,7 +205,8 @@ User's Latest Message: "${lastMessage}"
                         description: z.string().describe('Detailed instructions on what the user needs to build or analyze to complete the quest.'),
                         target_stack: z.string().describe('The specific technology stack this quest trains (e.g., React, Node.js, TypeScript, PostgreSQL).'),
                         xp_reward: z.number().describe('The amount of XP the user will earn upon completing this quest.')
-                    })
+                    }),
+                    execute: async () => ({ status: 'delegated' })
                 })
             }
         });
