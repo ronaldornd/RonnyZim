@@ -88,6 +88,11 @@ export async function getProfileData(userId: string) {
         factsData.forEach(f => {
             if (f.property_key === 'full_name' && !facts.display_name) {
                 facts.display_name = f.value;
+            } else if (f.property_key.endsWith('_api_key')) {
+                // Não enviamos a chave (mesmo criptografada) para o client no payload geral de perfil
+                // Apenas indicamos que ela existe para que o UI mostre o placeholder
+                // @ts-ignore
+                facts[f.property_key] = f.value ? 'true' : '';
             } else {
                 // @ts-ignore
                 facts[f.property_key] = f.value;
