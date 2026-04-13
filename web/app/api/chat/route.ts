@@ -1,6 +1,7 @@
 import { generateText, generateObject, tool, jsonSchema } from 'ai';
 import { getAIProvider } from '@/lib/ai/ai-factory';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 const routingSchema = z.object({
@@ -9,14 +10,22 @@ const routingSchema = z.object({
 
 export async function POST(request: Request) {
     try {
+        const supabaseAuth = await createRouteHandlerClient();
+        const { data: { user } } = await supabaseAuth.auth.getUser();
+
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        }
+
+        const body = await request.json();
         const {
             messages,
             agent_id,
-            dynamic_system_prompt,
-            user_id
-        } = await request.json();
+            dynamic_system_prompt
+        } = body;
+        const user_id = user.id;
 
-        if (!user_id || (!agent_id && !dynamic_system_prompt)) {
+        if (!agent_id && !dynamic_system_prompt) {
             return new Response(JSON.stringify({ error: 'Missing required fields.' }), { status: 400 });
         }
 
@@ -264,8 +273,7 @@ User's Latest Message: "${lastMessage}"
         console.error('Gemini Chat API Error:', error);
         return new Response(JSON.stringify({
             error: 'Server Error',
-            details: error.message || String(error),
-            stack: error.stack
+            details: error.message || String(error)
         }), { status: 500 });
     }
 }

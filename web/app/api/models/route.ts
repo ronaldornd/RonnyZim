@@ -1,11 +1,9 @@
 import { GoogleGenAI } from '@google/genai';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
     try {
-        const { searchParams } = new URL(request.url);
-        const provider = searchParams.get('provider') || 'google';
-        const clientApiKey = searchParams.get('apiKey');
+        const { provider = 'google', apiKey: clientApiKey } = await request.json();
 
         const supabase = await createRouteHandlerClient();
         const { data: { user } } = await supabase.auth.getUser();

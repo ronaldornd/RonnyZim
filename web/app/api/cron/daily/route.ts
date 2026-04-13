@@ -7,15 +7,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     try {
-        // Validação de Secret de Cron (Opcional, mas recomendado para produção Vercel)
-        const authHeader = request.headers.get('authorization');
+        // Validação de Secret de Cron (Mandatário para produção)
+        const cronSecret = process.env.CRON_SECRET;
         
-        // Em ambiente de produção o Vercel enviará um Bearer token via CRON_SECRET.
-        // Simulamos verificação local básica permitindo caso não haja variável strict ainda.
-        if (process.env.CRON_SECRET) {
-            if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-                return new NextResponse('Unauthorized', { status: 401 });
-            }
+        if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+            console.warn(`[CRON] Acesso não autorizado detectado.`);
+            return new NextResponse('Unauthorized', { status: 401 });
         }
 
         const supabase = createAdminClient();
