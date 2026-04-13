@@ -1,0 +1,8 @@
+- [x] PH8.1: Implementação do componente NeuralLinkWizard
+- [x] PH8.2: Injeção de bloqueio mandatório no DesktopShell
+- [x] PH8.3: Refatoração de interface no SettingsApp
+- [x] PH8.4: Remoção de onboarding legado no IdentityMatrix
+- [x] PH8.5: Implementação do AgentCarousel no Workspace
+- [x] PH8.6: Adição de controles de navegação e pausa no carrossel
+- [x] PH8.7: Refatoração de tipagem estrita para INTERNAL_AGENTS
+- [x] PH8.8: Documentação e arquivamento de fase
