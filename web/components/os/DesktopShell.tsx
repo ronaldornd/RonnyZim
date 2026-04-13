@@ -1,14 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/browser';
-import GenesisMonolith from '@/components/apps/genesis/GenesisMonolith';
-import AgentWorkspace from '@/components/apps/workspace/AgentWorkspace';
-import IdentityMatrix from '@/components/apps/identity/IdentityMatrix';
-import DataVault from '@/components/apps/vault/DataVault';
-import HunterBoard from '@/components/apps/hunter/HunterBoard';
-import AstroDash from '@/components/apps/rndmind/AstroDash';
-import SettingsApp from '@/components/apps/settings/SettingsApp';
+import { useOSStore, AppName } from '@/lib/store';
 import {
     TerminalSquare,
     Settings2,
@@ -16,28 +11,78 @@ import {
     UserCircle2,
     DatabaseZap,
     Target,
-    Sparkles
+    Sparkles,
+    Loader2
 } from 'lucide-react';
+import NeuralLinkWizard from './NeuralLinkWizard';
+
+// Dynamic Imports for Code Splitting
+const GenesisMonolith = dynamic(() => import('@/components/apps/genesis/GenesisMonolith'), { 
+    loading: () => <AppLoader name="Genesis" /> 
+});
+const AgentWorkspace = dynamic(() => import('@/components/apps/workspace/AgentWorkspace'), { 
+    loading: () => <AppLoader name="Workspace" /> 
+});
+const IdentityMatrix = dynamic(() => import('@/components/apps/identity/IdentityMatrix'), { 
+    loading: () => <AppLoader name="Identity" /> 
+});
+const DataVault = dynamic(() => import('@/components/apps/vault/DataVault'), { 
+    loading: () => <AppLoader name="Vault" /> 
+});
+const HunterBoard = dynamic(() => import('@/components/apps/hunter/HunterBoard'), { 
+    loading: () => <AppLoader name="Hunter" /> 
+});
+const AstroDash = dynamic(() => import('@/components/apps/rndmind/AstroDash'), { 
+    loading: () => <AppLoader name="Astro-Kernel" /> 
+});
+const SettingsApp = dynamic(() => import('@/components/apps/settings/SettingsApp'), { 
+    loading: () => <AppLoader name="Settings" /> 
+});
+
+function AppLoader({ name }: { name: string }) {
+    return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#050505] z-50">
+            <Loader2 className="w-8 h-8 text-green-500 animate-spin mb-4" />
+            <span className="text-[10px] font-mono text-green-500/50 uppercase tracking-[0.3em]">Carregando {name}...</span>
+        </div>
+    );
+}
 
 interface DesktopShellProps {
     userId: string;
-    initialApp: 'loading' | 'genesis' | 'workspace' | 'identity' | 'vault' | 'hunter' | 'rndmind' | 'settings';
-    profilePromise: Promise<{
-        stacks: any[];
-        facts: any;
-        quests: any[];
-    }>;
+    initialApp: AppName;
+    profilePromise: Promise<any>;
 }
 
 export default function DesktopShell({ userId: initialUserId, initialApp, profilePromise }: DesktopShellProps) {
-    const [activeApp, setActiveApp] = useState<'loading' | 'genesis' | 'workspace' | 'identity' | 'vault' | 'hunter' | 'rndmind' | 'settings'>(initialApp);
-    const [userId, setUserId] = useState<string | null>(initialUserId);
+    const { activeApp, setActiveApp, setUserId, setProfileData, userId, profileData } = useOSStore();
+    const [isDockOpen, setIsDockOpen] = useState(false);
+    const [requiresNeuralLink, setRequiresNeuralLink] = useState(false);
 
     useEffect(() => {
-        // No longer need to fetch session or calibration here as it's passed from OSPage
         setUserId(initialUserId);
         setActiveApp(initialApp);
-    }, [initialUserId, initialApp]);
+        
+        // Resolve profile data and sync with store
+        profilePromise.then(data => {
+            setProfileData(data);
+            
+            // Check if Neural Link is required (no AI keys)
+            const facts = data?.facts || {};
+            const hasAIKey = facts.gemini_api_key || facts.openai_api_key || facts.anthropic_api_key;
+            
+            if (!hasAIKey) {
+                setRequiresNeuralLink(true);
+            }
+        });
+    }, [initialUserId, initialApp, profilePromise, setUserId, setActiveApp, setProfileData]);
+
+    const handleNeuralLinkSuccess = () => {
+        setRequiresNeuralLink(false);
+        // Opcional: Recarregar dados se necessário, mas o wizard já salva no DB
+        // Para garantir consistência no store local:
+        window.location.reload(); 
+    };
 
     const handleGenesisComplete = () => {
         setActiveApp('workspace');
@@ -46,140 +91,157 @@ export default function DesktopShell({ userId: initialUserId, initialApp, profil
     const handleLogout = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
-        window.location.href = '/'; // Hard redirect to clear server state
-    }
+        window.location.href = '/';
+    };
 
-    // Se Genesis, não mostra a Dock (total isolamento)
+    // Accessibility navigation handler
+    const handleKeyDown = (e: React.KeyboardEvent, app: AppName) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            setActiveApp(app);
+        }
+    };
+
     if (activeApp === 'genesis') {
         return <GenesisMonolith onComplete={handleGenesisComplete} userId={userId || ''} />;
     }
 
-    // O Immersive Shell
     return (
-        <main className="h-[100dvh] w-full bg-[#050505] relative overflow-hidden overscroll-none flex flex-col">
-            <h1 className="sr-only">RonnyZim OS - {activeApp === 'workspace' ? 'Console de Inteligência' : activeApp.toUpperCase()}</h1>
+        <main className="fixed inset-0 h-[100dvh] w-full bg-[#050505] overflow-hidden overscroll-none flex flex-col">
+            <h1 className="sr-only">RonnyZim OS - {activeApp.toUpperCase()}</h1>
 
-            {/* Área do App Ativo (Full Screen) */}
+            {/* MANDATORY NEURAL LINK BLOCK */}
+            {requiresNeuralLink && (
+                <NeuralLinkWizard 
+                    userId={userId || initialUserId} 
+                    onSuccess={handleNeuralLinkSuccess} 
+                />
+            )}
+
+            {/* App Viewport */}
             <div className="flex-1 w-full min-h-0 relative z-0" role="region" aria-live="polite">
-                <div className={activeApp === 'workspace' ? 'absolute inset-0 z-0' : 'hidden'}>
-                    <AgentWorkspace userId={userId || ''} />
-                </div>
-
-                <div className={activeApp === 'identity' ? 'absolute inset-0 z-0' : 'hidden'}>
+                {activeApp === 'workspace' && <AgentWorkspace userId={userId || ''} />}
+                {activeApp === 'identity' && (
                     <IdentityMatrix 
                         userId={userId || ''} 
                         isActive={activeApp === 'identity'} 
                         profilePromise={profilePromise}
                     />
-                </div>
-
-                <div className={activeApp === 'vault' ? 'absolute inset-0 z-0' : 'hidden'}>
-                    <DataVault userId={userId || ''} onNavigate={setActiveApp} />
-                </div>
-
-                <div className={activeApp === 'hunter' ? 'absolute inset-0 z-0' : 'hidden'}>
-                    <HunterBoard userId={userId || ''} />
-                </div>
-
-                <div className={activeApp === 'rndmind' ? 'absolute inset-0 z-0' : 'hidden'}>
-                    <AstroDash />
-                </div>
-
-                <div className={activeApp === 'settings' ? 'absolute inset-0 z-0 bg-[#050505]' : 'hidden'}>
-                    <SettingsApp userId={userId || ''} />
-                </div>
+                )}
+                {activeApp === 'vault' && <DataVault userId={userId || ''} onNavigate={setActiveApp} />}
+                {activeApp === 'hunter' && <HunterBoard userId={userId || ''} />}
+                {activeApp === 'rndmind' && <AstroDash userId={userId || ''} />}
+                {activeApp === 'settings' && <SettingsApp userId={userId || ''} />}
             </div>
 
-
-            {/* Ghost Dock (Navegação Escondida) */}
-            {/* Um trigger zone transparente na parte inferior de 40px captura o hover */}
+            {/* Ghost Dock with Neon Pulse */}
             <nav 
-                className="absolute bottom-0 w-full h-[40px] group z-50 flex justify-center items-end pb-2"
+                className="absolute bottom-0 w-full flex justify-center z-50 pointer-events-none"
                 aria-label="Barra de Tarefas do OS"
+                onMouseEnter={() => setIsDockOpen(true)}
+                onMouseLeave={() => setIsDockOpen(false)}
             >
+                {/* Hover trigger zone for desktop */}
+                <div className="absolute bottom-0 w-full h-[30px] pointer-events-auto" aria-hidden="true" />
 
-                {/* The Dock */}
-                <div className="
-          translate-y-full group-hover:translate-y-0 opacity-0 group-hover:opacity-100 
-          transition-all duration-300 ease-out
-          bg-[#0a0a0a]/90 backdrop-blur-md border border-green-500/20 rounded-2xl px-6 py-3 flex gap-6 shadow-[0_0_30px_rgba(34,197,94,0.1)]
-        ">
+                {/* Glowing Trigger Line / Mobile Click Target */}
+                <button
+                    onClick={() => setIsDockOpen(!isDockOpen)}
+                    className={`absolute bottom-0 w-[45%] md:w-1/3 h-[5px] md:h-[4px] cursor-pointer pointer-events-auto transition-all duration-300 bg-green-500 shadow-[0_0_20px_rgba(34,197,94,1),0_0_40px_rgba(34,197,94,0.4)] animate-pulse rounded-t-md ${
+                        isDockOpen ? "opacity-0 translate-y-full" : "opacity-100"
+                    }`}
+                    aria-label="Alternar Dock"
+                />
 
-                    <button
+                {/* Dock Container */}
+                <div className={`
+                    pointer-events-auto transition-all duration-400 ease-out relative
+                    bg-[#0a0a0a]/95 backdrop-blur-md border justify-center border-green-500/20 rounded-t-2xl md:rounded-2xl px-4 md:px-6 py-2 flex gap-2 md:gap-4 shadow-[0_0_30px_rgba(34,197,94,0.1)] mb-0 md:mb-2
+                    ${isDockOpen ? "translate-y-0 opacity-100" : "translate-y-[calc(100%+10px)] opacity-0"}
+                `}>
+                    <DockIcon 
+                        icon={<TerminalSquare className="w-6 h-6" />} 
+                        label="Console" 
+                        active={activeApp === 'workspace'} 
                         onClick={() => setActiveApp('workspace')}
-                        aria-label="Abrir Console de IA"
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'workspace' ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-white/5'}`}
-                    >
-                        <TerminalSquare className="w-6 h-6" aria-hidden="true" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Console</span>
-                    </button>
-
-                    <button
+                        onKeyDown={(e) => handleKeyDown(e, 'workspace')}
+                    />
+                    <DockIcon 
+                        icon={<UserCircle2 className="w-6 h-6" />} 
+                        label="Identidade" 
+                        active={activeApp === 'identity'} 
                         onClick={() => setActiveApp('identity')}
-                        aria-label="Abrir Matrix de Identidade"
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'identity' ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-white/5'}`}
-                    >
-                        <UserCircle2 className="w-6 h-6" aria-hidden="true" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Identidade</span>
-                    </button>
-
-                    <button
+                        onKeyDown={(e) => handleKeyDown(e, 'identity')}
+                    />
+                    <DockIcon 
+                        icon={<DatabaseZap className="w-6 h-6" />} 
+                        label="Cofre" 
+                        active={activeApp === 'vault'} 
                         onClick={() => setActiveApp('vault')}
-                        aria-label="Abrir Cofre de Dados"
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'vault' ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-white/5'}`}
-                    >
-                        <DatabaseZap className="w-6 h-6" aria-hidden="true" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Cofre</span>
-                    </button>
-
-                    <button
+                        onKeyDown={(e) => handleKeyDown(e, 'vault')}
+                    />
+                    <DockIcon 
+                        icon={<Target className="w-6 h-6" />} 
+                        label="CRM" 
+                        colorClass={activeApp === 'hunter' ? 'text-red-400 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'text-slate-500 hover:text-red-400 hover:bg-white/5'}
+                        active={activeApp === 'hunter'} 
                         onClick={() => setActiveApp('hunter')}
-                        aria-label="Abrir Hunter Board (CRM)"
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'hunter' ? 'text-red-400 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'text-slate-500 hover:text-red-400 hover:bg-white/5'}`}
-                    >
-                        <Target className="w-6 h-6" aria-hidden="true" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">CRM</span>
-                    </button>
-
-                    <button
+                        onKeyDown={(e) => handleKeyDown(e, 'hunter')}
+                    />
+                    <DockIcon 
+                        icon={<Sparkles className="w-6 h-6" />} 
+                        label="ASTRO-KERNEL" 
+                        colorClass={activeApp === 'rndmind' ? 'text-emerald-400 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'text-slate-500 hover:text-emerald-400 hover:bg-white/5'}
+                        active={activeApp === 'rndmind'} 
                         onClick={() => setActiveApp('rndmind')}
-                        aria-label="Abrir RND Mind (Dashboard Astro)"
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                            activeApp === 'rndmind'
-                                ? 'text-violet-400 bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.2)]'
-                                : 'text-slate-500 hover:text-violet-400 hover:bg-white/5'
-                        }`}
-                    >
-                        <Sparkles className="w-6 h-6" aria-hidden="true" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">RND Mind</span>
-                    </button>
+                        onKeyDown={(e) => handleKeyDown(e, 'rndmind')}
+                    />
 
-                    <div className="w-[1px] h-full bg-slate-800 mx-2" role="separator" aria-hidden="true"></div>
+                    <div className="w-[1px] h-[30px] self-center bg-slate-800 mx-1 md:mx-2" role="separator" aria-hidden="true"></div>
 
-                    <button
+                    <DockIcon 
+                        icon={<Settings2 className="w-6 h-6" />} 
+                        label="Config" 
+                        active={activeApp === 'settings'} 
                         onClick={() => setActiveApp('settings')}
-                        aria-label="Configurações do Sistema"
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeApp === 'settings' ? 'text-zinc-300 bg-white/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                    >
-                        <Settings2 className="w-6 h-6" aria-hidden="true" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Config</span>
-                    </button>
+                        onKeyDown={(e) => handleKeyDown(e, 'settings')}
+                    />
 
                     <button
                         onClick={handleLogout}
                         aria-label="Encerrar Sessão"
-                        className="flex flex-col items-center gap-1 p-2 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors ml-4"
+                        className="flex items-center justify-center rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors w-[44px] h-[44px] md:w-[40px] md:h-[40px]"
                     >
-                        <Power className="w-6 h-6" aria-hidden="true" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Sair</span>
+                        <Power className="w-6 h-6 md:w-5 md:h-5" aria-hidden="true" />
                     </button>
-
                 </div>
-
-                {/* Glow Line Indicator (quando a dock ta escondida, mostra uma listra que brilha no hover) */}
-                <div className="absolute bottom-0 w-1/3 h-[2px] bg-gradient-to-r from-transparent via-green-500/20 group-hover:via-green-500 to-transparent pointer-events-none transition-colors duration-500" aria-hidden="true"></div>
-
             </nav>
         </main>
+    );
+}
+
+interface DockIconProps {
+    icon: React.ReactNode;
+    label: string;
+    active: boolean;
+    onClick: () => void;
+    onKeyDown: (e: React.KeyboardEvent) => void;
+    colorClass?: string;
+}
+
+function DockIcon({ icon, label, active, onClick, onKeyDown, colorClass }: DockIconProps) {
+    const defaultClass = active ? 'text-green-400 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.2)]' : 'text-slate-500 hover:text-green-500 hover:bg-white/5';
+    return (
+        <button
+            onClick={onClick}
+            onKeyDown={onKeyDown}
+            aria-label={`Abrir ${label}`}
+            className={`flex items-center justify-center rounded-xl transition-all w-[44px] h-[44px] md:w-[40px] md:h-[40px] relative group/dockicon ${colorClass || defaultClass}`}
+        >
+            {React.cloneElement(icon as React.ReactElement<any>, { 'aria-hidden': true, className: 'w-6 h-6 md:w-[22px] md:h-[22px]' })}
+            {/* Tooltip pra compensar a remoção do texto embaixo */}
+            <span className="absolute -top-10 opacity-0 group-hover/dockicon:opacity-100 transition-opacity bg-[#050505] text-[10px] font-mono tracking-widest uppercase px-2 py-1 border border-white/10 rounded pointer-events-none text-white whitespace-nowrap">
+                {label}
+            </span>
+        </button>
     );
 }
