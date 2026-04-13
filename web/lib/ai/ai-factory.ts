@@ -2,6 +2,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createAdminClient } from '../supabase/admin';
+import { decrypt } from '../security/encryption';
 
 export type AIProvider = 'google' | 'openai' | 'anthropic';
 
@@ -68,7 +69,11 @@ export async function getAIProvider(userId: string | undefined, type: 'chat' | '
         ]);
 
     const config = (facts || []).reduce((acc: any, curr) => {
-        acc[curr.property_key] = curr.value;
+        let val = curr.value;
+        if (val && val.startsWith('enc:')) {
+            val = decrypt(val.replace('enc:', ''));
+        }
+        acc[curr.property_key] = val;
         return acc;
     }, {});
 
