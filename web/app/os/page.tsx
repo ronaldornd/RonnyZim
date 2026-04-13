@@ -12,12 +12,13 @@ export const metadata = {
 
 // Força a página a ser dinâmica para garantir dados frescos
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function OSPage() {
     const supabase = await createRouteHandlerClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
         return (
             <div className="h-screen w-full bg-[#050505] flex items-center justify-center">
                 <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.5em]">
@@ -27,17 +28,28 @@ export default async function OSPage() {
         );
     }
 
-    const userId = session.user.id;
+    const userId = user.id;
 
-    // Fetch inicial rápido para o Shell (calibração etc)
+    // Fetch inicial robusto para o Shell (calibração etc)
     const { data: facts } = await supabase
         .from('user_facts')
-        .select('id')
+        .select('property_key, value')
         .eq('user_id', userId)
-        .eq('property_key', 'system_calibration_answer')
-        .limit(1);
+        .in('property_key', ['system_calibration_answer', 'full_name', 'display_name']);
 
-    const initialApp = (facts && facts.length > 0) ? 'workspace' : 'genesis';
+    // Se tiver a resposta de calibração OU se já tiver nome cadastrado, vai pro workspace
+    const hasCalibration = facts?.some(f => f.property_key === 'system_calibration_answer' && f.value === 'completed');
+    const hasProfileData = facts?.some(f => ['full_name', 'display_name'].includes(f.property_key) && f.value);
+
+    // Logging to Terminal to debug
+    console.log("=== SERVER SIDE RENDER DEBUG ===");
+    console.log("Target UserId:", userId);
+    console.log("Facts returned from Supabase:", facts);
+    console.log("hasCalibration:", hasCalibration);
+    console.log("hasProfileData:", hasProfileData);
+    
+    const initialApp = (hasCalibration || hasProfileData) ? 'workspace' : 'genesis';
+    console.log("initialApp computed as:", initialApp);
 
     // Os dados pesados do IdentityMatrix serão buscados via Streaming no componente de ação
     // ou passados via Promise para o componente cliente (Next.js 16 pattern)

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
         default: 'RonnyZim OS | Sistema de Inteligência Modular',
         template: '%s | RonnyZim OS'
     },
-    description: 'Interface de inteligência pessoal de alta performance, caça de talentos técnica e análise de biorritmo.',
+    description: 'Domine sua carreira com RonnyZim OS: a interface definitiva de inteligência pessoal, recrutamento técnico e performance neural. Junte-se a 10.000+ engenheiros de elite.',
     keywords: ['inteligência artificial', 'recrutamento técnico', 'biorritmo', 'hunterboard', 'dossiê técnico'],
     authors: [{ name: 'RonnyZim', url: 'https://ronnyzim.com' }],
     creator: 'RonnyZim',
@@ -58,6 +58,8 @@ export default function RootLayout({
         <html lang="pt-BR" className="dark">
             <head>
                 <IdentitySchema />
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
             </head>
             <body className={`${firaCode.variable} ${shareTech.variable} antialiased bg-[#020202] text-white overflow-hidden`}>
                 {children}
