@@ -1,13 +1,14 @@
+import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// Configurações unificadas de CORS
+// Configurações de CORS (extensão envia user_id via header, não precisa de credentials)
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, X-User-Id',
 };
 
 const analysisSchema: Schema = {
@@ -36,7 +37,7 @@ export async function OPTIONS() {
 
 export async function POST(request: Request) {
     try {
-        const { url, title, content, user_id } = await request.json();
+        const { url, title, content, user_id: bodyUserId } = await request.json();
 
         if (!content || !title) {
             return new Response(JSON.stringify({ error: 'Faltam dados da vaga' }), {
@@ -45,9 +46,32 @@ export async function POST(request: Request) {
             });
         }
 
+        // Estratégia de resolução de user_id (ordem de prioridade):
+        // 1. Header X-User-Id (enviado pela extensão quando disponível)
+        // 2. Body user_id (chamadas diretas)
+        // 3. Sessão autenticada via cookies (SSR/browser)
+        let finalUserId = request.headers.get('X-User-Id') || bodyUserId || null;
+
+        if (!finalUserId) {
+            try {
+                const supabaseSession = await createRouteHandlerClient();
+                const { data: { user } } = await supabaseSession.auth.getUser();
+                if (user) {
+                    finalUserId = user.id;
+                }
+            } catch {
+                // Sessão não disponível (extensão sem cookies)
+            }
+        }
+
+        if (!finalUserId) {
+            return new Response(JSON.stringify({ error: 'Nenhum usuário autenticado. Faça login no RonnyZim OS antes de usar o Clipper.' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
         const supabase = createAdminClient();
-        const fallbackUserId = 'b3e88b68-5f42-40f5-9b84-54169c58b11a';
-        const finalUserId = user_id || fallbackUserId;
         
         // Limpando o conteúdo para focar apenas nas palavras e economizar tokens
         const cleanContent = content.substring(0, 15000);

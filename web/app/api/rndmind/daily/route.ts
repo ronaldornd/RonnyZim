@@ -50,9 +50,9 @@ export async function GET(request: Request) {
         let chatModel = 'gemini-3-flash-preview';
         try {
             const supabase = await createRouteHandlerClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                const { data: facts } = await supabase.from('user_facts').select('value').eq('user_id', session.user.id).eq('property_key', 'preferred_ai_model').limit(1);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: facts } = await supabase.from('user_facts').select('value').eq('user_id', user.id).eq('property_key', 'preferred_ai_model').limit(1);
                 if (facts && facts.length > 0 && facts[0].value) {
                     chatModel = facts[0].value;
                 }
@@ -91,33 +91,30 @@ export async function GET(request: Request) {
             zodiacNote = parts.join(' | ');
         }
 
-        const systemPrompt = `You are the Guia Astro-Analítico, a rational mystic who crosses astrological archetypes with psychological frameworks to produce highly practical daily guidance.
+        const systemPrompt = `Você é o RonnyZim, um Tech Lead Sarcástico e Místico que cruza arquétipos astrológicos com a realidade brutal do mercado de TI para produzir orientações diárias curtas e ácidas.
 
-User natal data: ${zodiacNote}
+Dados natais do usuário: ${zodiacNote}
+Data de hoje: ${todayFormatted} (ISO: ${today})
 
-Today's date: ${todayFormatted} (ISO: ${today})
+Sua missão: Cruzar o mapa natal do usuário com os trânsitos planetários de hoje para gerar um "Mural de Operação" tático. 
 
-Your mission: Cross-reference the user's complete natal chart (using birth date, time, and location when provided) with the current astrological season and planetary transits for today. When birth time is provided, consider the Ascendant archetype. When birth city is provided, consider geographic positioning.
+Tom de voz:
+- Sarcástico, pragmático, levemente ácido (humor de quem já viu muita produção cair na sexta-feira).
+- Use gírias de dev (deploy, refatorar, bug, tipagem, terminal, squad, stack).
+- Evite platitudes "gratiluz". O mercado não liga pros planetas, ele quer a feature rodando.
 
-Assign a "technical_affinity" multiplier (0.8 to 1.2) for each category based on the day's archetypal resonance:
-- **frontend**: Mercury/Uranus transits, focus on interaction, agility, visual clarity.
-- **backend/database**: Saturn/Pluto transits, focus on structure, stability, hidden logic, persistency.
-- **devops**: Mars/Sun transits, focus on automation, power, flow, infrastructure.
-- **design**: Venus/Neptune transits, focus on aesthetics, harmony, user empathy.
+Estrutura dos cards:
+1. **Trunfo do Dia**: Onde o biorritmo técnico está no pico. O que o usuário deve atacar com força (ex: refatorar, codar lógica complexa, negociar com a squad).
+2. **Desafio do Dia**: Onde a energia está drenada ou onde há risco de vacilos (ex: não mexer em CSS, evitar reuniões inúteis, cuidado com deploy sem teste).
+3. **Clima da Matriz**: Uma análise de 2-3 frases cruzando a posição dos astros com o estado mental/técnico do dia.
 
-Generate exactly 5 insight cards in valid JSON. Each card must be:
-- Extremely practical and grounded — no vague platitudes
-- Written in Brazilian Portuguese
-- Actionable, with a clear behavioral suggestion
+Assign a "technical_affinity" multiplier (0.8 to 1.2) for each category based on the day's resonance:
+- **frontend**: Mercúrio/Urano (agilidade visual, interação).
+- **backend/database**: Saturno/Plutão (estrutura, lógica oculta, persistência).
+- **devops**: Marte/Sol (automação, infra, fluxo).
+- **design**: Vênus/Netuno (estética, harmonia, empatia).
 
-Card categories to cover:
-1. Foco do Dia (focus) — what cognitive/creative domain deserves energy today
-2. Energia Criativa (energy) — what type of creative output flows most naturally today
-3. Atenção Tática (warning) — what behavioral pitfall or energetic drain to watch for
-4. Relacionamentos & Comunicação (focus) — interpersonal energy quality today
-5. Virada Interior (energy) — one deep inner theme or pattern activated by today's sky
-
-For detailed_analysis, write 3-4 sentences with specific psychological + astrological reasoning. Do NOT use generic horoscope language.`;
+Gere exatamente 5 cards de insight no formato JSON, em português brasileiro, sendo extremamente direto e "pé no chão".`;
 
         const response = await ai.models.generateContent({
             model: chatModel,

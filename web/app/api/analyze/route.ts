@@ -1,52 +1,23 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI, Type, Schema } from '@google/genai';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getAIProvider } from '@/lib/ai/ai-factory';
 
-// Initialize the Google Gen AI client explicitly forcing GEMINI_API_KEY
-// to prevent collisions with GOOGLE_API_KEY which might expect OAuth.
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// Strictly define the expected JSON structure from Gemini
-const analysisSchema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-        score: {
-            type: Type.INTEGER,
-            description: "An overall score from 0 to 100 representing the quality or match.",
-        },
-        summary: {
-            type: Type.STRING,
-            description: "A concise executive summary of the document (appx 2-3 sentences).",
-        },
-        key_points: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "An array of EXACTLY 6 surgical technical data points, strengths, or weaknesses found. No fluff.",
-        },
-        action_plan: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "A list of EXACTLY 6 concrete, numbered tactical action steps. Each step must be a direct, actionable technical sentence (e.g., 'Refatore o middleware de cache utilizando Redis Pub/Sub para lidar com race conditions'). No vague advice.",
-        },
-        gap_analysis: {
-            type: Type.OBJECT,
-            properties: {
-                match_percentage: { type: Type.INTEGER, description: "Match percentage (0-100)." },
-                missing_skills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "EXACTLY 6 skills based on job or market gaps (AI, Cloud, 2026 trends). MANDATORY for density." },
-                strong_matches: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Top matching tech stacks." },
-                risks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "EXACTLY 6 tactical/career risks identified. MANDATORY for density." }
-            },
-            required: ["missing_skills", "risks"],
-            description: "Market intelligence crossing. If no job, identify 6 gaps and 6 risks relative to current 2026 market elite trends."
-        },
-        tags: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "3-5 technical tags."
-        }
-    },
-    required: ["score", "summary", "key_points", "action_plan", "gap_analysis"],
-};
+// Strictly define the expected JSON structure using Zod for the AI SDK
+const analysisSchema = z.object({
+    score: z.number().int().min(0).max(100).describe("An overall score from 0 to 100 representing the quality or match."),
+    summary: z.string().describe("A concise executive summary of the document (appx 2-3 sentences)."),
+    key_points: z.array(z.string()).length(6).describe("An array of EXACTLY 6 surgical technical data points, strengths, or weaknesses found. No fluff."),
+    action_plan: z.array(z.string()).length(6).describe("A list of EXACTLY 6 concrete, numbered tactical action steps. Each step must be a direct, actionable technical sentence."),
+    gap_analysis: z.object({
+        match_percentage: z.number().int().min(0).max(100).describe("Match percentage (0-100)."),
+        missing_skills: z.array(z.string()).length(6).describe("EXACTLY 6 skills based on job or market gaps (AI, Cloud, 2026 trends)."),
+        strong_matches: z.array(z.string()).describe("Top matching tech stacks."),
+        risks: z.array(z.string()).length(6).describe("EXACTLY 6 tactical/career risks identified.")
+    }).describe("Market intelligence crossing. If no job, identify 6 gaps and 6 risks relative to current 2026 market elite trends."),
+    tags: z.array(z.string()).min(3).max(5).optional().describe("3-5 technical tags.")
+});
 
 export async function POST(req: Request) {
     try {
@@ -56,18 +27,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Missing necessary parameters (fileUrl or userId)' }, { status: 400 });
         }
 
-        let analyzeModel = 'gemini-3-flash-preview';
-        try {
-            const adminClient = createAdminClient();
-            const { data: facts } = await adminClient.from('user_facts').select('value').eq('user_id', userId).eq('property_key', 'preferred_ai_model').limit(1);
-            if (facts && facts.length > 0 && facts[0].value) {
-                analyzeModel = facts[0].value;
-            }
-        } catch (e) {
-            console.error('Failed to fetch preferred_ai_model', e);
-        }
+        // 1. Get Dynamic Provider via AI Factory
+        const { provider, modelId } = await getAIProvider(userId);
 
-        // 1. Download the file from the Signed URL
+        // 2. Download the file from the Signed URL
         const fileResponse = await fetch(fileUrl);
         if (!fileResponse.ok) {
             throw new Error(`Failed to download file from Storage. Status: ${fileResponse.status}`);
@@ -76,32 +39,39 @@ export async function POST(req: Request) {
         const arrayBuffer = await fileResponse.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        let geminiContents: any[] = [];
         const isPdf = fileType?.includes('pdf') || fileResponse.headers.get('content-type')?.includes('pdf');
         const isImage = fileType?.includes('image') || fileResponse.headers.get('content-type')?.includes('image');
 
-        // 2. Multimodal Extraction
-        if (isPdf || isImage) {
-            const mimeType = isPdf ? 'application/pdf' : (fileType || fileResponse.headers.get('content-type') || 'image/jpeg');
-            const base64Data = buffer.toString('base64');
+        // 3. Multimodal Parts (using Vercel AI SDK standard)
+        let messages: any[] = [];
+        const base64Data = buffer.toString('base64');
+        const mimeType = fileType || fileResponse.headers.get('content-type') || (isPdf ? 'application/pdf' : 'image/jpeg');
 
-            geminiContents = [
+        if (isPdf || isImage) {
+            messages = [
                 {
                     role: 'user',
-                    parts: [
-                        { text: "Analyze the attached document carefully:" },
-                        { inlineData: { data: base64Data, mimeType: mimeType } }
+                    content: [
+                        { type: 'text', text: "Analyze the attached document carefully:" },
+                        { 
+                            type: 'file', 
+                            data: base64Data, 
+                            mimeType: mimeType 
+                        }
                     ]
                 }
             ];
         } else {
-            geminiContents = [
-                { role: 'user', parts: [{ text: `Here is the content:\n\n${buffer.toString('utf-8')}` }] }
+            messages = [
+                { 
+                    role: 'user', 
+                    content: [{ type: 'text', text: `Here is the content:\n\n${buffer.toString('utf-8')}` }] 
+                }
             ];
         }
 
-        // 3. Invoke Google Gemini
-        let systemInstruction = `
+        // 4. System Instruction
+        const systemInstruction = `
             Você é o HunterZim, uma IA impiedosa, irônica e profundamente técnica, focada em otimização de carreira e "hunting" de elite.
             Seu objetivo é analisar o documento (currículo ou descrição de vaga) e extrair inteligência tática.
 
@@ -126,32 +96,21 @@ export async function POST(req: Request) {
             - score: de 0 a 100 baseado na soberania técnica.
             - action_plan: EXATAMENTE 6 PASSOS técnicos ultra-específicos. Nada de enchimento de linguiça.
             - key_points: EXATAMENTE 6 PONTOS táticos (forças/vulnerabilidades extraídas).
-            - gap_analysis: Os campos 'missing_skills' e 'risks' DEVEM conter EXATAMENTE 6 itens cada. Se for um currículo solo, projete os gaps em relação ao topo do mercado de 2026 (IA, Agentic Systems, Rust, etc).
-            - Nenhum markdown externo. Apenas o objeto JSON puro.`;
+            - gap_analysis: Os campos 'missing_skills' e 'risks' DEVEM conter EXATAMENTE 6 itens cada. Se for um currículo solo, projete os gaps em relação ao topo do mercado de 2026 (IA, Agentic Systems, Rust, etc).`;
 
-        const response = await ai.models.generateContent({
-            model: analyzeModel,
-            contents: geminiContents,
-            config: {
-                systemInstruction: systemInstruction,
-                responseMimeType: "application/json",
-                responseSchema: analysisSchema,
-            }
+        // 5. Invoke AI SDK (generateObject ensures strict structure across ANY provider)
+        const { object: analysisResult } = await generateObject({
+            model: provider(modelId),
+            schema: analysisSchema,
+            system: systemInstruction,
+            messages: messages,
+            temperature: 0.4,
         });
 
-        const responseText = response.text;
-
-        if (!responseText) {
-            throw new Error("Gemini returned an empty response.");
-        }
-
-        // 4. Parse output and Validate
-        const analysisResult = JSON.parse(responseText);
-
-        // 5. Salvar Insight no banco de dados (CRM do Hub) usando Client Admin
+        // 6. Save Insight to Database (Client Admin)
         const supabaseAdmin = createAdminClient();
 
-        // [Phase 5] Save Auto-Tags if applicable
+        // Save Auto-Tags if applicable
         if (intent === 'vault_tagging' && analysisResult.tags && fileName) {
             const tagsToInsert = analysisResult.tags.map((t: string) => ({
                 user_id: userId,
@@ -174,13 +133,14 @@ export async function POST(req: Request) {
                 status: 'Evaluating'
             });
 
-        if (dbError) { /* Non-fatal: insight save failed, analysis still returned */ }
+        if (dbError) { console.error('Failed to save insight:', dbError); }
 
         return NextResponse.json(analysisResult);
 
     } catch (error: any) {
+        console.error('Analyze API Error:', error);
         return NextResponse.json(
-            { error: 'Falha ao processar análise do documento no Backend Native.', details: error.message },
+            { error: 'Falha ao processar análise do documento no Backend Neural.', details: error.message },
             { status: 500 }
         );
     }

@@ -1,19 +1,11 @@
-import { GoogleGenAI, Type, Schema } from '@google/genai';
-import { declareKnowledgeGapFunctionDeclaration, createDailyQuestFunctionDeclaration } from '@/lib/active-learning/tools';
+import { generateText, tool, jsonSchema } from 'ai';
+import { getAIProvider } from '@/lib/ai/ai-factory';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { z } from 'zod';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-const routingSchema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-        agent_id: {
-            type: Type.STRING,
-            description: "The unique ID of the selected agent (e.g., 'hunterzim', 'orchestrator')",
-        }
-    },
-    required: ["agent_id"]
-};
+const routingSchema = z.object({
+    agent_id: z.string().describe("The unique ID of the selected agent (e.g., 'hunterzim', 'orchestrator')"),
+});
 
 export async function POST(request: Request) {
     try {
@@ -28,6 +20,8 @@ export async function POST(request: Request) {
             return new Response(JSON.stringify({ error: 'Missing required fields.' }), { status: 400 });
         }
 
+        const { model, provider } = await getAIProvider(user_id);
+
         const supabase = createAdminClient();
 
         // 1. Fetch available agents to build routing context
@@ -41,7 +35,7 @@ export async function POST(request: Request) {
 
         const lastMessage = messages?.[messages.length - 1]?.content || '';
         let targetAgentId = agent_id;
-        let systemInstruction = dynamic_system_prompt;
+        let systemInstruction = dynamic_system_prompt || '';
 
         // 2. Fetch User Context (Facts + AI Model Preference) early
         let chatModel = 'gemini-2.0-flash'; // Default globals
@@ -149,22 +143,18 @@ Rules:
 User's Latest Message: "${lastMessage}"
 `;
             try {
-                const routeResponse = await ai.models.generateContent({
-                    model: chatModel,
-                    contents: routingPrompt,
-                    config: {
-                        responseMimeType: "application/json",
-                        responseSchema: routingSchema,
-                        temperature: 0.1
-                    }
+                const { object } = await generateText({
+                    model: model,
+                    messages: [{ role: 'user', content: routingPrompt }],
+                    experimental_output: {
+                        schema: routingSchema
+                    },
+                    temperature: 0.1
                 });
 
-                if (routeResponse.text) {
-                    const parsed = JSON.parse(routeResponse.text);
-                    if (parsed.agent_id && agents.some(a => a.id === parsed.agent_id)) {
-                        targetAgentId = parsed.agent_id;
-                        console.log(`🧭 [Semantic Router] Decidiu rotear para: ${targetAgentId} (Anterior: ${agent_id})`);
-                    }
+                if (object.agent_id && agents.some(a => a.id === object.agent_id)) {
+                    targetAgentId = object.agent_id;
+                    console.log(`🧭 [Semantic Router] Decidiu rotear para: ${targetAgentId} (Anterior: ${agent_id})`);
                 }
             } catch (routeErr) {
                 console.error("Routing inference failed, falling back to current agent:", routeErr);
@@ -197,31 +187,39 @@ User's Latest Message: "${lastMessage}"
             systemInstruction += "\n\nCRITICAL SYSTEM RULE [CONTEXT AWARE]: Se o usuário possui missões ativas listadas acima, encoraje-o a completá-las antes de sugerir novas missões. NÃO crie missões ou desafios aleatoriamente se o usuário apenas disser 'olá' ou mensagens curtas. Nesse caso, faça um breve resumo motivacional do estado atual (missões ativas, vagas em andamento, energia) e direcione o foco dele SEM chamar a tool create_daily_quest.";
         }
 
-        // Processamento do history para a chamada principal
-        const geminiHistory = (messages || []).map((m: any) => {
-            let role = m.role === 'assistant' ? 'model' : m.role;
-            return {
-                role: role,
-                parts: [{ text: m.content || m.text || ' ' }]
-            };
-        });
-
         // 6. Main Agent Generation
-        const response = await ai.models.generateContent({
-            model: chatModel,
-            contents: geminiHistory,
-            config: {
-                systemInstruction: systemInstruction,
-                tools: [{
-                    functionDeclarations: [declareKnowledgeGapFunctionDeclaration, createDailyQuestFunctionDeclaration]
-                }],
+        const response = await generateText({
+            model: model,
+            system: systemInstruction,
+            messages: (messages || []).map((m: any) => ({
+                role: m.role,
+                content: m.content || m.text || ''
+            })),
+            tools: {
+                declare_knowledge_gap: tool({
+                    description: 'When you lack crucial context or facts to answer a users prompt accurately (e.g., you do not know their seniority, salary, or current tech stack), CALL THIS TOOL to ask the user. DO NOT GUESS.',
+                    parameters: z.object({
+                        category: z.string().describe('The category of this fact. E.g., career, emotional, habits, preference, identity, stack.'),
+                        question_to_user: z.string().describe('The direct question to the user asking for the missing fact, in your persona tone.'),
+                        importance: z.string().describe('High or medium priority flag.')
+                    }),
+                }),
+                create_daily_quest: tool({
+                    description: 'Generates a new daily quest/challenge for the user based on their skills or learning goals. Call this whenever the user asks for a challenge, study plan, or quest. Provide realistic XP rewards based on difficulty (e.g., 50 for easy, 100 for medium, 200 for hard).',
+                    parameters: z.object({
+                        title: z.string().describe('A catchy, game-like title for the quest (e.g., "Refatoração Profunda", "Mestre do Hook").'),
+                        description: z.string().describe('Detailed instructions on what the user needs to build or analyze to complete the quest.'),
+                        target_stack: z.string().describe('The specific technology stack this quest trains (e.g., React, Node.js, TypeScript, PostgreSQL).'),
+                        xp_reward: z.number().describe('The amount of XP the user will earn upon completing this quest.')
+                    }),
+                })
             }
         });
 
         // 7. Active Learning Check & Return
-        if (response.functionCalls && response.functionCalls.length > 0) {
-            const call = response.functionCalls[0];
-            if (call.name === 'declare_knowledge_gap') {
+        if (response.toolCalls && response.toolCalls.length > 0) {
+            const call = response.toolCalls[0];
+            if (call.toolName === 'declare_knowledge_gap') {
                 return new Response(JSON.stringify({
                     type: 'knowledge_gap',
                     gapData: call.args
@@ -230,7 +228,7 @@ User's Latest Message: "${lastMessage}"
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
-            if (call.name === 'create_daily_quest') {
+            if (call.toolName === 'create_daily_quest') {
                 const adminClient = createAdminClient();
                 const qArgs = call.args as any;
                 

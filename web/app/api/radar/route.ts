@@ -1,49 +1,24 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI, Type, Schema } from '@google/genai';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getAIProvider } from '@/lib/ai/ai-factory';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-const radarSchema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-        targets: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "2 or 3 exact job titles of technical decision-makers (e.g. 'Engineering Manager', 'CTO').",
-        },
-        dm_template: {
-            type: Type.STRING,
-            description: "A short, punchy LinkedIn connection message (max 300 chars) highlighting a strong match.",
-        }
-    },
-    required: ["targets", "dm_template"],
-};
+const radarSchema = z.object({
+    targets: z.array(z.string()).min(2).max(3).describe("2 or 3 exact job titles of technical decision-makers (e.g. 'Engineering Manager', 'CTO')."),
+    dm_template: z.string().max(300).describe("A short, punchy LinkedIn connection message highlighting a strong match.")
+});
 
 export async function POST(req: Request) {
     try {
         const { user_id, company_name, job_description, strong_matches } = await req.json();
 
-        if (!company_name || !job_description) {
-            return NextResponse.json({ error: 'Missing company_name or job_description' }, { status: 400 });
+        if (!company_name || !job_description || !user_id) {
+            return NextResponse.json({ error: 'Missing company_name, job_description or user_id' }, { status: 400 });
         }
 
-        // 1. Fetch User Preferred Model
-        let radarModel = 'gemini-2.0-flash'; // Standard fallback
-        if (user_id) {
-            const supabase = createAdminClient();
-            const { data: modelFact } = await supabase
-                .from('user_facts')
-                .select('value')
-                .eq('user_id', user_id)
-                .eq('property_key', 'preferred_ai_model')
-                .single();
-            
-            if (modelFact?.value) {
-                radarModel = modelFact.value;
-                console.log(`📡 [Radar API] Usando modelo preferido: ${radarModel}`);
-            }
-        }
+        // 1. Get Dynamic Provider via AI Factory
+        const { provider, modelId } = await getAIProvider(user_id);
 
         const systemInstruction = `
             Você é um Headhunter Técnico de Elite. Sua missão é ajudar o candidato a hackear o processo seletivo da empresa ${company_name}.
@@ -57,8 +32,6 @@ export async function POST(req: Request) {
             - Deve provar valor imediato de forma agressiva porém profissional.
             - Deve estar em Português do Brasil (PT-BR).
             - Sem enrolação. Vá direto ao ponto.
-            
-            Retorne APENAS o JSON no formato sugerido.
         `;
 
         const userPrompt = `
@@ -71,24 +44,15 @@ export async function POST(req: Request) {
             Pontos fortes do candidato para destacar: ${strong_matches?.join(', ') || 'experiência na área'}.
         `;
 
-        // FIXED SDK CALL AND SYNTX
-        const response = await ai.models.generateContent({
-            model: radarModel,
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-            config: {
-                systemInstruction: systemInstruction,
-                responseMimeType: "application/json",
-                responseSchema: radarSchema,
-                temperature: 0.7
-            }
+        // 2. Invoke AI SDK (generateObject)
+        const { object: result } = await generateObject({
+            model: provider(modelId),
+            schema: radarSchema,
+            system: systemInstruction,
+            prompt: userPrompt,
+            temperature: 0.7,
         });
 
-        const responseText = response.text;
-        if (!responseText) {
-            throw new Error("Gemini returned an empty response.");
-        }
-
-        const result = JSON.parse(responseText);
         return NextResponse.json(result);
 
     } catch (error: any) {

@@ -16,8 +16,8 @@ export async function POST(request: Request) {
 
         // Em vez de usar Service Role (bypass), resgatamos o usuário logado via Cookies SSR
         // RLS puro vai barrar o insert se session.user.id != user_id
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session || session.user.id !== user_id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || user.id !== user_id) {
             return NextResponse.json(
                 { error: 'Unauthorized: Cookie mismatch with user_id payload.' },
                 { status: 401 }
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
         // Executa a persistência usando o RLS do usuário logado
         const { error } = await supabase.from('user_facts').upsert({
-            user_id: session.user.id,
+            user_id: user.id,
             property_key: fact_key,
             value: fact_value,
             category: 'calibrated_learning'
