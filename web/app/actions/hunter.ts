@@ -164,6 +164,7 @@ export async function analyzeInterviewAction(formData: FormData) {
     const jobDescription = formData.get("jobDescription") as string;
     const historyJson = formData.get("history") as string;
     const userName = formData.get("userName") as string;
+    const jobId = formData.get("jobId") as string;
 
     if (!audioFile) throw new Error("Áudio não detectado.");
 
@@ -171,7 +172,7 @@ export async function analyzeInterviewAction(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado");
 
-    const { apiKey, modelId } = await getAIProvider(user.id);
+    const { apiKey, modelId } = await getAIProvider(user.id, 'audio');
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: modelId });
     
@@ -190,18 +191,25 @@ export async function analyzeInterviewAction(formData: FormData) {
       ${historyJson}
       
       SUA TAREFA:
-      1. Transcreva o que o usuário disse (seja fiel, mesmo que ele gagueje).
+      1. Transcreva o que o usuário disse.
       2. Avalie a resposta tecnicamente (0-100).
       3. Forneça um feedback curto, ácido e tático (Hacker Critique).
-      4. Elabore a PRÓXIMA pergunta desafiadora baseada na resposta dele e nos requisitos da vaga.
+      4. Identifique "Red Flags" ou erros técnicos gritantes.
+      5. Analise o tom: ele soa confiante, arrogante, inseguro ou prolixo?
+      6. Elabore a PRÓXIMA pergunta desafiadora.
       
       Retorne APENAS um JSON no formato:
       {
-        "transcribed_text": "o que ele disse",
+        "transcribed_text": "text",
         "evaluation_score": number,
-        "feedback": "sua crítica ácida",
-        "next_question": "sua próxima pergunta",
-        "quest_generated": boolean (true se ele falhou feio e precisa de uma missão de redenção)
+        "feedback": "critique",
+        "next_question": "next",
+        "quest_generated": boolean,
+        "analysis": {
+          "technical_gaps": ["skill1", "skill2"],
+          "behavioral_traits": ["trait1", "trait2"],
+          "red_flags": ["flag1"]
+        }
       }
     `;
 
@@ -219,6 +227,51 @@ export async function analyzeInterviewAction(formData: FormData) {
     const text = response.text();
     const jsonString = text.replace(/```json|```/g, "").trim();
     const json = JSON.parse(jsonString);
+
+    // 2. Upload do Áudio para o Storage (para o Listening Room)
+    const fileName = `${user.id}/${Date.now()}.webm`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('interview_audio')
+        .upload(fileName, audioFile);
+
+    if (uploadError) console.warn("Erro ao subir áudio:", uploadError);
+    const audioUrl = uploadData ? supabase.storage.from('interview_audio').getPublicUrl(fileName).data.publicUrl : "";
+
+    // 3. Persistir sessão para análise posterior (Listening Room)
+    await supabase.from('interview_sessions').insert({
+        user_id: user.id,
+        job_id: jobId,
+        audio_url: audioUrl,
+        summary: json.feedback,
+        behavioral_analysis: {
+            overall_confidence: json.evaluation_score,
+            summary: json.feedback,
+            technical_gaps: json.analysis?.technical_gaps || [],
+            behavioral_traits: json.analysis?.behavioral_traits || [],
+            red_flags: json.analysis?.red_flags || [],
+            markers: [
+                { timestamp: 2, type: 'key_point', label: 'Início da Resposta' },
+                { timestamp: 5, type: json.evaluation_score > 60 ? 'assertive' : 'hesitation', label: 'Análise de Tom' }
+            ]
+        }
+    });
+
+    // 4. Criar Missão de Redenção real se necessário
+    if (json.quest_generated) {
+        await supabase.from('quests').insert({
+            user_id: user.id,
+            title: `Redenção: ${json.analysis?.technical_gaps?.[0] || 'Desafio Técnico'}`,
+            description: `O Hunter-Zim detectou uma falha crítica na sua entrevista. Domine este tópico para recuperar sua reputação. Feedback: ${json.feedback}`,
+            difficulty: 'hard',
+            xp_reward: 250,
+            status: 'active'
+        });
+    }
+
+    // 5. Salvar histórico no Insight para persistência (Continuidade)
+    await supabase.from('hunter_insights')
+        .update({ action_plan: { history: JSON.parse(historyJson), last_state: 'waiting_for_user' } })
+        .eq('id', jobId);
 
     return { success: true, ...json };
   } catch (error: any) {
