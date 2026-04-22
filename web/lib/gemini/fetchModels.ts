@@ -29,7 +29,8 @@ export async function getAvailableAudioModels(apiKey: string) {
       const isStandardMultimodal = name.includes('gemini-1.5') || 
                                    name.includes('gemini-2.0') || 
                                    name.includes('gemini-2.5') || 
-                                   name.includes('gemini-3');
+                                   name.includes('gemini-3.0') ||
+                                   name.includes('gemini-3.1');
       
       const hasAudioKeywords = name.includes('audio') || description.includes('audio') ||
                                name.includes('live') || description.includes('live');

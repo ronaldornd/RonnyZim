@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { getAIProvider } from '@/lib/ai/ai-factory';
+import { normalizeSkill } from '@/lib/utils/skill-normalizer';
 
 // Strictly define the expected JSON structure using Zod for the AI SDK
 const analysisSchema = z.object({
@@ -87,8 +88,9 @@ export async function POST(req: Request) {
 
             ${userStacks && userStacks.length > 0 ? `
             --- CLASH SIMULATOR PROTOCOL ---
-            O usuário possui as seguintes habilidades confirmadas (User Stacks): ${userStacks.join(', ')}.
+            O usuário possui as seguintes habilidades confirmadas (User Stacks): ${userStacks.map((s: string) => normalizeSkill(s)).join(', ')}.
             Se o documento for uma descrição de vaga, você DEVE realizar um cross-reference agressivo entre os requisitos da vaga e os User Stacks.
+            IMPORTANTE: Versionamentos (ex: ES6+, v18, Next 14) não devem ser contados como 'missing_skills' se o usuário já possuir a tecnologia base.
             Calcule um match_percentage REALISTA (não seja bonzinho) e identifique exatamente o que falta (missing_skills) e onde ele brilha (strong_matches).
             Se o documento for um currículo, analise as stacks dele e prepare-o para o mercado.
             --------------------------------

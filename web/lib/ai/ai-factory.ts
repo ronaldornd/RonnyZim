@@ -13,9 +13,11 @@ function mapModelId(modelId: string, provider: AIProvider): string {
     const id = modelId.toLowerCase();
 
     if (provider === 'google') {
-        if (id.includes('gemini-3')) return 'gemini-2.0-flash'; 
-        if (id.includes('gemini-3.1')) return 'gemini-2.0-flash';
-        if (!id || id === 'default') return 'gemini-2.0-flash';
+        if (id.includes('gemini-3.1')) return 'gemini-3.1-flash-lite-preview';
+        if (id.includes('gemini-3')) return 'gemini-3-flash-preview';
+        if (id.includes('gemini-2.5')) return 'gemini-2.5-flash-lite';
+        if (id.includes('gemini-2.0')) return 'gemini-2.0-flash';
+        if (!id || id === 'default') return 'gemini-3.1-flash-lite-preview';
         return modelId;
     }
 
@@ -39,11 +41,11 @@ function mapModelId(modelId: string, provider: AIProvider): string {
 export async function getAIProvider(userId: string | undefined, type: 'chat' | 'audio' = 'chat') {
     const supabase = createAdminClient();
 
-    // Se no houver usurio, usa defaults do servidor via .env
+    // Se não houver usuário, usa defaults do servidor via .env
     if (!userId) {
         const apiKey = process.env.GEMINI_API_KEY;
         const google = createGoogleGenerativeAI({ apiKey });
-        const modelId = 'gemini-2.0-flash';
+        const modelId = 'gemini-3.1-flash-lite-preview';
         return { 
             model: google(modelId), 
             providerName: 'google' as AIProvider, 

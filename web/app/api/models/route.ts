@@ -1,10 +1,24 @@
 import { GoogleGenAI } from '@google/genai';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
 
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const provider = searchParams.get('provider') || 'google';
+    const apiKey = searchParams.get('apiKey');
+    return fetchModels(provider, apiKey || undefined);
+}
+
 export async function POST(request: Request) {
     try {
         const { provider = 'google', apiKey: clientApiKey } = await request.json();
+        return fetchModels(provider, clientApiKey);
+    } catch (err) {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400 });
+    }
+}
 
+async function fetchModels(provider: string, clientApiKey?: string) {
+    try {
         const supabase = await createRouteHandlerClient();
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -32,7 +46,7 @@ export async function POST(request: Request) {
                     description: model.description,
                     family: name.includes('gemini-3.1') ? 'Gemini 3.1' : 
                             name.includes('gemini-3') ? 'Gemini 3.0' : 
-                            name.includes('gemini-2.5') ? 'Gemini 2.5' : 'Gemini Legacy'
+                            name.includes('gemini-2.0') ? 'Gemini 2.0' : 'Gemini Legacy'
                 });
             }
         } 
@@ -76,6 +90,24 @@ export async function POST(request: Request) {
                 displayName: m.display_name || m.id,
                 family: m.id.includes('claude-4') ? 'Claude 4' :
                         m.id.includes('claude-3-5') ? 'Claude 3.5' : 'Claude Legacy'
+            }));
+        }
+        else if (provider === 'elevenlabs') {
+            const apiKey = clientApiKey;
+            if (!apiKey) throw new Error('ElevenLabs API Key missing');
+
+            const res = await fetch('https://api.elevenlabs.io/v1/voices', {
+                headers: { 'xi-api-key': apiKey }
+            });
+            
+            if (!res.ok) throw new Error('Falha ao validar ElevenLabs. Verifique sua chave ou saldo.');
+            const data = await res.json();
+            
+            // Retorna as vozes como se fossem modelos para validação
+            models = (data.voices || []).map((v: any) => ({
+                id: v.voice_id,
+                displayName: v.name,
+                family: 'ElevenLabs Voices'
             }));
         }
 
