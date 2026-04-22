@@ -394,34 +394,75 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="flex-1 overflow-hidden relative">
-                                                <AnimatePresence mode="wait">
-                                                    <motion.div
-                                                        key={targetJobs[currentIndex]?.id}
-                                                        initial={{ opacity: 0, x: 100 }}
-                                                        animate={{ opacity: 1, x: 0 }}
-                                                        exit={{ opacity: 0, x: -100 }}
-                                                        drag="x"
-                                                        dragConstraints={{ left: 0, right: 0 }}
-                                                        onDragEnd={(_, info) => {
-                                                            if (info.offset.x > 100 && currentIndex > 0) setCurrentIndex(prev => prev - 1);
-                                                            else if (info.offset.x < -100 && currentIndex < targetJobs.length - 1) setCurrentIndex(prev => prev + 1);
-                                                        }}
-                                                        className="h-full cursor-grab active:cursor-grabbing"
-                                                    >
-                                                        <JobCard 
-                                                            insight={targetJobs[currentIndex]} 
-                                                            onSelect={(j: any) => { setSelectedJob(j); setIsExpanded(true); }}
-                                                            onDelete={(id: string) => setItemToDelete(id)}
-                                                            onUpdateStatus={updateStatus}
-                                                            openDocument={openDocument}
-                                                            getScoreColor={getScoreColor}
-                                                            getStatusIcon={getStatusIcon}
-                                                            updatingId={updatingId}
-                                                            onStartInterview={(j: any) => { setSelectedInterviewJob(j); setIsInterviewOpen(true); }}
-                                                        />
-                                                    </motion.div>
-                                                </AnimatePresence>
+                                            <div className="flex-1 flex flex-col overflow-hidden relative">
+                                                <div className="flex-1 relative overflow-hidden">
+                                                    <AnimatePresence mode="wait">
+                                                        <motion.div
+                                                            key={targetJobs[currentIndex]?.id}
+                                                            initial={{ opacity: 0, x: 100 }}
+                                                            animate={{ opacity: 1, x: 0 }}
+                                                            exit={{ opacity: 0, x: -100 }}
+                                                            drag="x"
+                                                            dragConstraints={{ left: 0, right: 0 }}
+                                                            onDragEnd={(_, info) => {
+                                                                if (info.offset.x > 50 && currentIndex > 0) setCurrentIndex(prev => prev - 1);
+                                                                else if (info.offset.x < -50 && currentIndex < targetJobs.length - 1) setCurrentIndex(prev => prev + 1);
+                                                            }}
+                                                            className="h-full cursor-grab active:cursor-grabbing flex flex-col"
+                                                        >
+                                                            <JobCard 
+                                                                insight={targetJobs[currentIndex]} 
+                                                                onSelect={(j: any) => { setSelectedJob(j); setIsExpanded(true); }}
+                                                                onDelete={(id: string) => setItemToDelete(id)}
+                                                                onUpdateStatus={updateStatus}
+                                                                openDocument={openDocument}
+                                                                getScoreColor={getScoreColor}
+                                                                getStatusIcon={getStatusIcon}
+                                                                updatingId={updatingId}
+                                                                onStartInterview={(j: any) => { setSelectedInterviewJob(j); setIsInterviewOpen(true); }}
+                                                            />
+                                                        </motion.div>
+                                                    </AnimatePresence>
+
+                                                    {/* Navigation Controls - NEW */}
+                                                    {targetJobs.length > 1 && (
+                                                        <>
+                                                            <div className="absolute inset-y-0 left-0 flex items-center pr-4">
+                                                                <button 
+                                                                    disabled={currentIndex === 0}
+                                                                    onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
+                                                                    className="p-3 rounded-full bg-black/40 border border-white/10 text-white/50 hover:text-red-500 hover:border-red-500/50 hover:bg-red-500/10 transition-all disabled:opacity-10"
+                                                                >
+                                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                                                </button>
+                                                            </div>
+                                                            <div className="absolute inset-y-0 right-0 flex items-center pl-4">
+                                                                <button 
+                                                                    disabled={currentIndex === targetJobs.length - 1}
+                                                                    onClick={() => setCurrentIndex(prev => Math.min(targetJobs.length - 1, prev + 1))}
+                                                                    className="p-3 rounded-full bg-black/40 border border-white/10 text-white/50 hover:text-red-500 hover:border-red-500/50 hover:bg-red-500/10 transition-all disabled:opacity-10"
+                                                                >
+                                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                {/* Pagination Counter - NEW */}
+                                                <div className="h-12 flex items-center justify-center gap-4 bg-black/20 border-t border-white/5">
+                                                    <div className="flex gap-1.5">
+                                                        {targetJobs.map((_, i) => (
+                                                            <div 
+                                                                key={i} 
+                                                                className={`h-1 transition-all rounded-full ${i === currentIndex ? 'w-8 bg-red-500' : 'w-2 bg-white/10'}`} 
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+                                                        {currentIndex + 1} / {targetJobs.length} ALVOS
+                                                    </span>
+                                                </div>
                                             </div>
                                         )
                                     ) : (
