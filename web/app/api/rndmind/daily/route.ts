@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { getAIProvider } from '@/lib/ai/ai-factory';
+import { GoogleGenAI, Type } from '@google/genai';
 
 // Injetado via Factory no request
 

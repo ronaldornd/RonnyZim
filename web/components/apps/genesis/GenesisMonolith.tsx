@@ -149,14 +149,10 @@ export default function GenesisMonolith({ onComplete, userId }: GenesisMonolithP
         }
 
         setSuccessToast(true);
-
-        try {
-            await genesisSyncAction(effectiveUserId);
-        } catch (syncError) {
-            console.error("Falha ao sincronizar DNA com ASTRO-KERNEL:", syncError);
-        }
-
-        onComplete();
+        // Sincronização de DNA postergada para o NeuralLinkWizard (pós-configuração de API Key)
+        setTimeout(() => {
+            onComplete();
+        }, 1500);
     };
 
     const handleInputChange = (field: string, value: string) => {
