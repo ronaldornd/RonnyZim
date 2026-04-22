@@ -124,18 +124,23 @@ export default function OnboardingTutorial({ onComplete }: OnboardingTutorialPro
 
     const handleNext = useCallback(() => {
         playSFX('TAB_SWITCH');
-        if (current < SLIDES.length - 1) {
-            setCurrent(current + 1);
-        } else {
-            onComplete();
-        }
+        // Pequeno delay para garantir que o som ("carregamento") toque antes de avançar
+        setTimeout(() => {
+            if (current < SLIDES.length - 1) {
+                setCurrent(current + 1);
+            } else {
+                onComplete();
+            }
+        }, 150);
     }, [current, onComplete, playSFX]);
 
     const handlePrev = useCallback(() => {
         playSFX('TAB_SWITCH');
-        if (current > 0) {
-            setCurrent(current - 1);
-        }
+        setTimeout(() => {
+            if (current > 0) {
+                setCurrent(current - 1);
+            }
+        }, 150);
     }, [current, playSFX]);
 
     const slide = SLIDES[current];

@@ -12,10 +12,12 @@ import {
     ExternalLink,
     Activity,
     Cpu,
-    Sparkles
+    Sparkles,
+    Mic
 } from 'lucide-react';
 import { useCyberSFX } from '@/hooks/useCyberSFX';
 import { updateUserFactsAction } from '@/app/actions/profile';
+import { genesisSyncAction } from '@/app/actions/genesis-sync';
 
 interface NeuralLinkWizardProps {
     userId: string;
@@ -55,12 +57,23 @@ const tutorials = {
         ],
         color: "text-orange-400",
         icon: <Activity className="w-5 h-5 text-orange-400" />
+    },
+    elevenlabs: {
+        title: "ElevenLabs (Voz Neural)",
+        url: "https://elevenlabs.io/app/settings/api-keys",
+        steps: [
+            "Acesse as configurações da ElevenLabs",
+            "Copie sua chave de API (xi-api-key)",
+            "Voz hiper-realista para o HunterBoard"
+        ],
+        color: "text-purple-400",
+        icon: <Mic className="w-5 h-5 text-purple-400" />
     }
 };
 
 export default function NeuralLinkWizard({ userId, onSuccess }: NeuralLinkWizardProps) {
     const [wizardStep, setWizardStep] = useState<'select' | 'key' | 'validating' | 'success'>('select');
-    const [selectedProvider, setSelectedProvider] = useState<'google' | 'openai' | 'anthropic'>('google');
+    const [selectedProvider, setSelectedProvider] = useState<'google' | 'openai' | 'anthropic' | 'elevenlabs'>('google');
     const [wizardKey, setWizardKey] = useState('');
     const [validationError, setValidationError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +86,11 @@ export default function NeuralLinkWizard({ userId, onSuccess }: NeuralLinkWizard
         
         try {
             // 1. Validar a chave buscando modelos
-            const res = await fetch(`/api/models?provider=${selectedProvider}&apiKey=${wizardKey}`);
+            const res = await fetch(`/api/models`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider: selectedProvider, apiKey: wizardKey })
+            });
             const data = await res.json();
             
             if (!res.ok || !data.models || data.models.length === 0) {
@@ -82,16 +99,30 @@ export default function NeuralLinkWizard({ userId, onSuccess }: NeuralLinkWizard
 
             // 2. Chave válida! Salvar no Supabase
             setIsSaving(true);
-            const keyField = selectedProvider === 'google' ? 'gemini_api_key' : 
-                            selectedProvider === 'openai' ? 'openai_api_key' : 'anthropic_api_key';
             
-            await updateUserFactsAction(userId, [
-                { category: 'Security', property_key: keyField, value: wizardKey },
-                { category: 'System', property_key: 'preferred_ai_provider', value: selectedProvider },
-                // Selecionar o primeiro modelo válido como padrão
-                { category: 'System', property_key: 'preferred_ai_model', value: data.models[0].id },
-                { category: 'System', property_key: 'preferred_audio_model', value: data.models[0].id }
-            ]);
+            if (selectedProvider === 'elevenlabs') {
+                await updateUserFactsAction(userId, [
+                    { category: 'Security', property_key: 'elevenlabs_api_key', value: wizardKey }
+                ]);
+            } else {
+                const keyField = selectedProvider === 'google' ? 'gemini_api_key' : 
+                                selectedProvider === 'openai' ? 'openai_api_key' : 'anthropic_api_key';
+                
+                await updateUserFactsAction(userId, [
+                    { category: 'Security', property_key: keyField, value: wizardKey },
+                    { category: 'System', property_key: 'preferred_ai_provider', value: selectedProvider },
+                    // Selecionar o primeiro modelo válido como padrão
+                    { category: 'System', property_key: 'preferred_ai_model', value: data.models[0].id },
+                    { category: 'System', property_key: 'preferred_audio_model', value: data.models[0].id }
+                ]);
+
+                // 3. Tentar sincronizar DNA agora que temos a chave (se o Genesis já foi feito)
+                try {
+                    await genesisSyncAction(userId);
+                } catch (syncErr) {
+                    console.warn("NeuralLinkWizard: Falha na sincronização de DNA pós-chave:", syncErr);
+                }
+            }
 
             setWizardStep('success');
             playSuccess();
@@ -138,7 +169,7 @@ export default function NeuralLinkWizard({ userId, onSuccess }: NeuralLinkWizard
                                 </p>
                                 
                                 <div className="grid grid-cols-1 gap-2.5">
-                                    {(['google', 'openai', 'anthropic'] as const).map(p => (
+                                    {(['google', 'openai', 'anthropic', 'elevenlabs'] as const).map(p => (
                                         <button
                                             key={p}
                                             onClick={() => {
@@ -153,7 +184,7 @@ export default function NeuralLinkWizard({ userId, onSuccess }: NeuralLinkWizard
                                                     {tutorials[p].icon}
                                                 </div>
                                                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-white transition-colors">
-                                                    {p === 'google' ? 'Google Gemini' : p === 'openai' ? 'OpenAI GPT' : 'Anthropic Claude'}
+                                                    {tutorials[p].title.split(' (')[0]}
                                                 </span>
                                             </div>
                                             <ArrowRight className="w-4 h-4 text-slate-700 group-hover:text-cyan-400 transition-all group-hover:translate-x-1" />

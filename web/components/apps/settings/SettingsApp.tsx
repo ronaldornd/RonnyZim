@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/browser';
 import { useBootSequence } from '@/hooks/useBootSequence';
-import { saveSettingsAction } from '@/app/actions/settings';
+import { saveSettingsAction, wipeMemoryAction } from '@/app/actions/settings';
 import { 
     Settings2, 
     Cpu, 
@@ -22,7 +22,8 @@ import {
     Key,
     Activity,
     ExternalLink,
-    Zap
+    Zap,
+    Mic
 } from 'lucide-react';
 
 interface ModelInfo {
@@ -45,6 +46,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
     const [geminiKey, setGeminiKey] = useState('');
     const [openaiKey, setOpenaiKey] = useState('');
     const [anthropicKey, setAnthropicKey] = useState('');
+    const [elevenlabsKey, setElevenlabsKey] = useState('');
     const [showKey, setShowKey] = useState<boolean>(false);
 
     const [loadingModels, setLoadingModels] = useState(false);
@@ -52,12 +54,15 @@ export default function SettingsApp({ userId }: { userId: string }) {
     const [error, setError] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const { resetBoot } = useBootSequence();
+    const [confirmWipe, setConfirmWipe] = useState(false);
+    const [wiping, setWiping] = useState(false);
 
     // Mapping providers to keys and links
     const providerConfig = {
         google: { key: geminiKey, set: setGeminiKey, link: 'https://aistudio.google.com/app/apikey', label: 'Gemini API Key' },
         openai: { key: openaiKey, set: setOpenaiKey, link: 'https://platform.openai.com/api-keys', label: 'OpenAI API Key' },
-        anthropic: { key: anthropicKey, set: setAnthropicKey, link: 'https://console.anthropic.com/settings/keys', label: 'Anthropic API Key' }
+        anthropic: { key: anthropicKey, set: setAnthropicKey, link: 'https://console.anthropic.com/settings/keys', label: 'Anthropic API Key' },
+        elevenlabs: { key: elevenlabsKey, set: setElevenlabsKey, link: 'https://elevenlabs.io/app/settings/api-keys', label: 'ElevenLabs API Key' }
     };
 
     useEffect(() => {
@@ -67,7 +72,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
     // Fetch models whenever provider or its key changes (with debounce)
     useEffect(() => {
         const currentKey = (providerConfig as any)[selectedProvider].key;
-        if (currentKey && currentKey.length > 10) {
+        if (currentKey && currentKey.length > 5) {
             const timer = setTimeout(() => {
                 fetchModels(selectedProvider, currentKey);
             }, 800);
@@ -75,7 +80,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
         } else {
             setModels([]);
         }
-    }, [selectedProvider, geminiKey, openaiKey, anthropicKey]);
+    }, [selectedProvider, geminiKey, openaiKey, anthropicKey, elevenlabsKey]);
 
     const fetchModels = async (provider: string, apiKey: string) => {
         try {
@@ -110,7 +115,8 @@ export default function SettingsApp({ userId }: { userId: string }) {
                     'preferred_audio_model',
                     'gemini_api_key',
                     'openai_api_key',
-                    'anthropic_api_key'
+                    'anthropic_api_key',
+                    'elevenlabs_api_key'
                 ]);
 
             if (facts) {
@@ -125,6 +131,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
                     if (f.property_key === 'gemini_api_key') setGeminiKey(displayValue);
                     if (f.property_key === 'openai_api_key') setOpenaiKey(displayValue);
                     if (f.property_key === 'anthropic_api_key') setAnthropicKey(displayValue);
+                    if (f.property_key === 'elevenlabs_api_key') setElevenlabsKey(displayValue);
                 });
             }
         } catch (err) {
@@ -145,6 +152,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
                 { category: 'Security', property_key: 'gemini_api_key', value: geminiKey },
                 { category: 'Security', property_key: 'openai_api_key', value: openaiKey },
                 { category: 'Security', property_key: 'anthropic_api_key', value: anthropicKey },
+                { category: 'Security', property_key: 'elevenlabs_api_key', value: elevenlabsKey },
             ];
 
             const result = await saveSettingsAction(updates);
@@ -158,6 +166,32 @@ export default function SettingsApp({ userId }: { userId: string }) {
             setError('Neural sync failed: ' + err.message);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleWipe = async () => {
+        if (!confirmWipe) {
+            setConfirmWipe(true);
+            setTimeout(() => setConfirmWipe(false), 5000);
+            return;
+        }
+
+        try {
+            setWiping(true);
+            setError(null);
+            const res = await wipeMemoryAction();
+            if (res.success) {
+                // Forçar recarregamento para limpar estados globais e caches
+                window.location.reload();
+            } else {
+                throw new Error(res.error);
+            }
+        } catch (err: any) {
+            console.error(err);
+            setError('Neural Purge Failed: ' + err.message);
+            setConfirmWipe(false);
+        } finally {
+            setWiping(false);
         }
     };
 
@@ -256,8 +290,8 @@ export default function SettingsApp({ userId }: { userId: string }) {
                                 {/* Provider Selector */}
                                 <div className="space-y-4">
                                     <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Provedor Ativo</label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {['google', 'openai', 'anthropic'].map(p => (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {['google', 'openai', 'anthropic', 'elevenlabs'].map(p => (
                                             <button
                                                 key={p}
                                                 onClick={() => setSelectedProvider(p)}
@@ -270,6 +304,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
                                                 {p === 'google' && <Sparkles className="w-3.5 h-3.5 " />}
                                                 {p === 'openai' && <Cpu className="w-3.5 h-3.5" />}
                                                 {p === 'anthropic' && <Activity className="w-3.5 h-3.5" />}
+                                                {p === 'elevenlabs' && <Mic className="w-3.5 h-3.5" />}
                                                 {p}
                                             </button>
                                         ))}
@@ -420,11 +455,23 @@ export default function SettingsApp({ userId }: { userId: string }) {
                                             </div>
                                         </button>
 
-                                        <button className="bg-zinc-900/50 border border-white/5 text-zinc-600 p-6 rounded-2xl transition-all cursor-not-allowed flex flex-col gap-3">
-                                            <Unplug className="w-5 h-5" />
+                                        <button 
+                                            onClick={handleWipe}
+                                            disabled={wiping}
+                                            className={`border p-6 rounded-2xl transition-all group flex flex-col gap-3 ${
+                                                confirmWipe 
+                                                ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' 
+                                                : 'bg-zinc-900/50 border-white/5 text-zinc-600 hover:border-red-500/20 hover:text-red-500/60'
+                                            }`}
+                                        >
+                                            {wiping ? <Loader2 className="w-5 h-5 animate-spin" /> : <Unplug className="w-5 h-5" />}
                                             <div className="text-left">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest">Wipe Memory</p>
-                                                <p className="text-[8px] opacity-60 uppercase mt-1">Limpa todos os fatos aprendidos (Coming Soon)</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest">
+                                                    {confirmWipe ? 'CONFIRMAR PURGA?' : 'Wipe Memory'}
+                                                </p>
+                                                <p className="text-[8px] opacity-60 uppercase mt-1">
+                                                    {confirmWipe ? 'Pressione novamente para apagar tudo.' : 'Limpa todos os fatos aprendidos'}
+                                                </p>
                                             </div>
                                         </button>
                                     </div>

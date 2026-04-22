@@ -101,12 +101,13 @@ export default function DesktopShell({ userId: initialUserId, initialApp, profil
         }
     };
 
-    if (activeApp === 'genesis') {
-        return <GenesisMonolith onComplete={handleGenesisComplete} userId={userId || ''} />;
-    }
+    // Removed early return to allow NeuralLinkWizard overlay to function across all states
 
     return (
-        <main className="fixed inset-0 h-[100dvh] w-full bg-[#050505] overflow-hidden overscroll-none flex flex-col">
+        <main 
+            data-user-id={userId || initialUserId}
+            className="fixed inset-0 h-[100dvh] w-full bg-[#050505] overflow-hidden overscroll-none flex flex-col"
+        >
             <h1 className="sr-only">RonnyZim OS - {activeApp.toUpperCase()}</h1>
 
             {/* MANDATORY NEURAL LINK BLOCK */}
@@ -119,6 +120,7 @@ export default function DesktopShell({ userId: initialUserId, initialApp, profil
 
             {/* App Viewport */}
             <div className="flex-1 w-full min-h-0 relative z-0" role="region" aria-live="polite">
+                {activeApp === 'genesis' && <GenesisMonolith onComplete={handleGenesisComplete} userId={userId || ''} />}
                 {activeApp === 'workspace' && <AgentWorkspace userId={userId || ''} />}
                 {activeApp === 'identity' && (
                     <IdentityMatrix 
