@@ -5,10 +5,12 @@
   "description": "Scrapes job descriptions directly into the RonnyZim OS Identity Matrix.",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
     "https://shell.ronnyzim.com/*"
   ],
   "action": {

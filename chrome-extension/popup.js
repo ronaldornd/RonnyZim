@@ -28,14 +28,32 @@ document.getElementById('extractBtn').addEventListener('click', async () => {
 
         // Busca o user_id do Supabase executando script na aba do RonnyZim OS
         let userId = null;
+        let baseUrl = 'http://localhost:3000'; // Fallback
+        
         try {
-            const osTabs = await chrome.tabs.query({ url: 'http://localhost:3000/*' });
+            const osTabs = await chrome.tabs.query({ 
+                url: [
+                    'http://localhost:3000/*', 
+                    'http://127.0.0.1:3000/*', 
+                    'https://shell.ronnyzim.com/*'
+                ] 
+            });
+
             if (osTabs.length > 0) {
-                const osTab = osTabs[0];
+                // Prioriza abas que não estejam descartadas
+                const osTab = osTabs.find(t => !t.discarded) || osTabs[0];
+                baseUrl = new URL(osTab.url).origin;
+                
                 const sessionResults = await chrome.scripting.executeScript({
                     target: { tabId: osTab.id },
                     func: () => {
-                        // Busca o user_id do Supabase auth no localStorage
+                        // 1. Tenta pelo Farol Neural (DOM Beacon) - Mais confiável
+                        const mainNode = document.querySelector('main[data-user-id]');
+                        if (mainNode) {
+                            return mainNode.getAttribute('data-user-id');
+                        }
+
+                        // 2. Fallback: Busca o user_id do Supabase auth no localStorage
                         for (const key of Object.keys(localStorage)) {
                             if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
                                 try {
@@ -55,13 +73,13 @@ document.getElementById('extractBtn').addEventListener('click', async () => {
         }
 
         if (!userId) {
-            throw new Error("Sessão não encontrada. Abra o RonnyZim OS (localhost:3000) e faça login primeiro.");
+            throw new Error("Sessão não detectada. Verifique se a aba do RonnyZim OS está aberta e se você está logado.");
         }
 
-        statusEl.textContent = `Sessão encontrada. Enviando (${data.content.length} bytes)...`;
+        statusEl.textContent = `Sessão validada (${baseUrl}). Enviando dados...`;
 
-        // Dispara ponte com o localhost Next.js
-        const res = await fetch('http://localhost:3000/api/clipper', {
+        // Envia para o backend dinâmico onde a sessão foi encontrada
+        const res = await fetch(`${baseUrl}/api/clipper`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',

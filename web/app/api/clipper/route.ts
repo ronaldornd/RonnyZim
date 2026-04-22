@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 import { getAIProvider } from '@/lib/ai/ai-factory';
+import { normalizeSkill } from '@/lib/utils/skill-normalizer';
 
 // O genAI agora é instanciado dinamicamente dentro do POST
 
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
             .eq('user_id', finalUserId)
             .eq('is_active', true);
         
-        let userStacks = stackData?.map((s: any) => s.global_stacks?.name).filter(Boolean) || [];
+        let userStacks = stackData?.map((s: any) => normalizeSkill(s.global_stacks?.name || '')).filter(Boolean) || [];
         if (userStacks.length === 0) {
            userStacks = ['React', 'Node.js', 'PostgreSQL', 'TypeScript']; // Fallback básico
         }
@@ -101,7 +102,8 @@ Você é o HunterZim, uma IA impiedosa, irônica e profundamente técnica, focad
 Analise a descrição dessa vaga crua capturada da web e extraia a inteligência.
 --- CLASH SIMULATOR PROTOCOL ---
 O usuário possui as seguintes habilidades confirmadas (User Stacks): ${userStacks.join(', ')}.
-Realize um cross-reference agressivo entre os requisitos da vaga e as habilidades do usuário.
+Realize um cross-reference agressivo entre os requisitos da vaga e as habilidades do usuário. 
+IMPORTANTE: Se a vaga exigir uma versão específica de uma linguagem ou framework (ex: JavaScript ES6+, React 18) e o usuário tiver a tecnologia base na stack dele, NÃO CONSIDERE ESSA VERSÃO COMO UM MISSING_SKILL. Ignore sufixos de versão na detecção de gaps.
 Calcule um match_percentage REALISTA (não seja bonzinho) e identifique exatamente o que falta (missing_skills) e onde ele domina (strong_matches).
 A vaga de origem era da URL: ${url}
 Regras: Retorne APENAS o JSON válido preenchido com a análise crua e real.`;
