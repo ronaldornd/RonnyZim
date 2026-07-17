@@ -1,0 +1,48 @@
+name: CI - MCP Servers (TypeScript)
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'mcp-servers/**'
+      - '.github/workflows/ci-mcp.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'mcp-servers/**'
+      - '.github/workflows/ci-mcp.yml'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [ 20.x ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: 'mcp-servers/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: mcp-servers
+        run: npm ci
+
+      - name: Build TypeScript
+        working-directory: mcp-servers
+        run: npm run build
+
+      - name: Build success notification
+        if: success()
+        run: echo "✅ MCP Servers CI passed successfully!"
+
+      - name: Build failure notification
+        if: failure()
+        run: echo "❌ MCP Servers CI failed!"
+        continue-on-error: true

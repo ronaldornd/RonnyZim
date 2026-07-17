@@ -43,21 +43,21 @@ export async function getAIProvider(userId: string | undefined, type: 'chat' | '
 
     // Se não houver usuário, usa defaults do servidor via .env
     if (!userId) {
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.GOOGLE_API_KEY;
         const google = createGoogleGenerativeAI({ apiKey });
         const modelId = 'gemini-3.1-flash-lite-preview';
-        return { 
-            model: google(modelId), 
-            providerName: 'google' as AIProvider, 
-            apiKey: apiKey!, 
+        return {
+            model: google(modelId),
+            providerName: 'google' as AIProvider,
+            apiKey: apiKey!,
             modelId,
-            instance: google 
+            instance: google
         };
     }
 
     // 1. Busca configuraes do usurio
     const preferredModelKey = type === 'audio' ? 'preferred_audio_model' : 'preferred_ai_model';
-    
+
     const { data: facts } = await supabase
         .from('user_facts')
         .select('property_key, value')
@@ -85,14 +85,14 @@ export async function getAIProvider(userId: string | undefined, type: 'chat' | '
 
     // 2. Determina a API Key
     let apiKey: string | undefined;
-    
+
     switch (providerName) {
         case 'openai':
             apiKey = config.openai_api_key || process.env.OPENAI_API_KEY;
             if (!apiKey) throw new Error("API Key da OpenAI no configurada.");
             const openai = createOpenAI({ apiKey });
             return { model: openai(modelId), providerName, apiKey, modelId, instance: openai };
-            
+
         case 'anthropic':
             apiKey = config.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
             if (!apiKey) throw new Error("API Key da Anthropic no configurada.");
@@ -101,7 +101,7 @@ export async function getAIProvider(userId: string | undefined, type: 'chat' | '
 
         case 'google':
         default:
-            apiKey = config.gemini_api_key || process.env.GEMINI_API_KEY;
+            apiKey = config.gemini_api_key || process.env.GOOGLE_API_KEY;
             if (!apiKey) throw new Error("API Key do Google Gemini no configurada.");
             const google = createGoogleGenerativeAI({ apiKey });
             return { model: google(modelId), providerName: 'google' as AIProvider, apiKey, modelId, instance: google };

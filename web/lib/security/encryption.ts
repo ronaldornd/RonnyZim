@@ -9,9 +9,13 @@ const AUTH_TAG_LENGTH = 16;
  * Deve ter exatamente 32 bytes para AES-256.
  */
 function getEncryptionKey(): Buffer {
-    const key = process.env.ENCRYPTION_KEY;
+    let key = process.env.ENCRYPTION_KEY;
     if (!key) {
-        throw new Error('ENCRYPTION_KEY is not defined in environment variables.');
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('ENCRYPTION_KEY is not defined in environment variables.');
+        }
+        console.warn('⚠️ WARNING: ENCRYPTION_KEY não está definida nas variáveis de ambiente. Usando chave padrão de desenvolvimento. NÃO USE EM PRODUÇÃO!');
+        key = 'fallback_development_encryption_key_ronnyzim_os';
     }
     
     // Se a chave for hexadecimal ou base64, converta. 

@@ -1,0 +1,64 @@
+name: CI - Web App (Next.js)
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'web/**'
+      - '.github/workflows/ci-web.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'web/**'
+      - '.github/workflows/ci-web.yml'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [ 20.x ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Run linter
+        working-directory: web
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build Next.js
+        working-directory: web
+        run: npm run build
+        env:
+          # Supabase
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # AI Keys
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # System config
+          NEXT_PUBLIC_DEFAULT_MODEL: ${{ vars.NEXT_PUBLIC_DEFAULT_MODEL || 'gemini-2.0-flash' }}
+
+      - name: Build success notification
+        if: success()
+        run: echo "✅ Web app CI passed successfully!"
+
+      - name: Build failure notification
+        if: failure()
+        run: echo "❌ Web app CI failed!"
+        continue-on-error: true
