@@ -94,7 +94,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { data, error } = await supabase
           .from("user_facts")
           .select("*")
-          .eq("profile_id", userId);
+          .eq("user_id", userId);
 
         if (error) throw error;
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -111,17 +111,45 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           };
         }
 
-        const { data, error } = await supabase
+        // Transação lógica devido à falta de Unique constraint composto (user_id, property_key)
+        const { data: existing, error: selectError } = await supabase
           .from("user_facts")
-          .upsert({ 
-            profile_id: userId, 
-            key, 
-            value,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'profile_id,key' })
-          .select();
+          .select("id")
+          .eq("user_id", userId)
+          .eq("property_key", key);
 
-        if (error) throw error;
+        if (selectError) throw selectError;
+
+        const stringifiedValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+
+        let resultData, actionError;
+
+        if (existing && existing.length > 0) {
+          const { data, error } = await supabase
+            .from("user_facts")
+            .update({
+              category: "system",
+              value: stringifiedValue
+            })
+            .eq("id", existing[0].id)
+            .select();
+          resultData = data;
+          actionError = error;
+        } else {
+          const { data, error } = await supabase
+            .from("user_facts")
+            .insert({
+              user_id: userId,
+              category: "system",
+              property_key: key,
+              value: stringifiedValue
+            })
+            .select();
+          resultData = data;
+          actionError = error;
+        }
+
+        if (actionError) throw actionError;
         return { content: [{ type: "text", text: `Fact '${key}' updated successfully for user ${userId}.` }] };
       }
 
@@ -129,8 +157,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { userId } = args as { userId: string };
         const { data, error } = await supabase
           .from("dossiers")
-          .select("*")
-          .eq("profile_id", userId);
+          .select("*, jobs!inner(user_id)")
+          .eq("jobs.user_id", userId);
 
         if (error) throw error;
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
