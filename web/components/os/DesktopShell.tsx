@@ -60,21 +60,46 @@ export default function DesktopShell({ userId: initialUserId, initialApp, profil
     const [requiresNeuralLink, setRequiresNeuralLink] = useState(false);
 
     useEffect(() => {
-        setUserId(initialUserId);
-        setActiveApp(initialApp);
-        
-        // Resolve profile data and sync with store
-        profilePromise.then(data => {
-            setProfileData(data);
-            
-            // Check if Neural Link is required (no AI keys)
-            const facts = data?.facts || {};
-            const hasAIKey = facts.gemini_api_key || facts.openai_api_key || facts.anthropic_api_key;
-            
-            if (!hasAIKey) {
-                setRequiresNeuralLink(true);
+        const initializeSessionAndProfile = async () => {
+            let resolvedUserId = initialUserId;
+
+            // Recuperação do userId no client se ele veio vazio do servidor
+            if (!resolvedUserId || resolvedUserId === "") {
+                const supabase = createClient();
+                const { data: { session } } = await supabase.auth.getSession();
+                resolvedUserId = session?.user?.id || "";
+                console.log("DesktopShell: userId resolvido a partir da sessão no cliente:", resolvedUserId);
             }
-        });
+
+            setUserId(resolvedUserId);
+            setActiveApp(initialApp);
+
+            // Se o resolvedUserId for diferente do initialUserId (que era vazio),
+            // buscamos os dados do perfil atualizados do cliente usando o resolvedUserId.
+            let activeProfilePromise = profilePromise;
+            if (resolvedUserId && resolvedUserId !== initialUserId) {
+                const { getProfileDataAction } = await import('@/app/actions/os');
+                activeProfilePromise = getProfileDataAction(resolvedUserId);
+            }
+
+            Promise.resolve(activeProfilePromise).then(data => {
+                setProfileData(data);
+                
+                // Check if Neural Link is required (no AI keys)
+                const facts = data?.facts || {};
+                const hasAIKey = facts.gemini_api_key || facts.openai_api_key || facts.anthropic_api_key;
+                
+                if (!hasAIKey) {
+                    setRequiresNeuralLink(true);
+                } else {
+                    setRequiresNeuralLink(false);
+                }
+            }).catch(err => {
+                console.error("DesktopShell: Erro ao carregar dados do perfil:", err);
+            });
+        };
+
+        initializeSessionAndProfile();
     }, [initialUserId, initialApp, profilePromise, setUserId, setActiveApp, setProfileData]);
 
     const handleNeuralLinkSuccess = () => {

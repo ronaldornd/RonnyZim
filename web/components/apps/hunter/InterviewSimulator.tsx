@@ -205,8 +205,8 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                 </div>
 
                 <div className="flex-1 flex overflow-hidden lg:flex-row flex-col min-h-0">
-                    <div className="flex-1 flex flex-col overflow-hidden relative">
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 pb-40">
+                    <div className="flex-1 flex flex-col h-full overflow-hidden justify-between min-h-0">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
                             <AnimatePresence mode="popLayout">
                                 {history.map((msg, idx) => (
                                     <motion.div
@@ -257,8 +257,8 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                             </AnimatePresence>
                         </div>
 
-                        {/* Action Area */}
-                        <div className="absolute bottom-0 inset-x-0 p-8 bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent flex justify-center">
+                        {/* Action Area - Estático no flexbox, garantindo fixidez e visibilidade */}
+                        <div className="p-8 bg-[#050505]/95 border-t border-white/[0.03] flex justify-center shrink-0">
                             <div className="flex items-center gap-6 rounded-full bg-white/[0.03] backdrop-blur-3xl p-3 pr-10 border border-white/10 shadow-2xl hover:bg-white/[0.05] transition-all">
                                 {state === 'recording_user' ? (
                                     <button onClick={handleStopRecording} className="h-16 w-16 rounded-full bg-primary flex items-center justify-center relative overflow-hidden shadow-[0_0_30px_rgba(var(--primary),0.4)]">

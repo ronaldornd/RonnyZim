@@ -74,33 +74,6 @@ export const JobCard = ({
                             "{insight.summary.slice(0, 180)}..."
                         </p>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-3">
-                            <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                                <Zap size={12} /> Pontos Fortes
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                                {insight.gap_analysis?.strong_matches.slice(0, 3).map((skill, i) => (
-                                    <span key={i} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-mono">
-                                        {skill}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="space-y-3">
-                            <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2">
-                                <Activity size={12} /> Gaps Críticos
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                                {insight.gap_analysis?.missing_skills.slice(0, 3).map((skill, i) => (
-                                    <span key={i} className="px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg text-[10px] font-mono">
-                                        {skill}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 

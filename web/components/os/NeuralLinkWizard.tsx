@@ -16,6 +16,7 @@ import {
     Mic
 } from 'lucide-react';
 import { useCyberSFX } from '@/hooks/useCyberSFX';
+import { createClient } from '@/lib/supabase/browser';
 import { updateUserFactsAction } from '@/app/actions/profile';
 import { genesisSyncAction } from '@/app/actions/genesis-sync';
 
@@ -100,15 +101,27 @@ export default function NeuralLinkWizard({ userId, onSuccess }: NeuralLinkWizard
             // 2. Chave válida! Salvar no Supabase
             setIsSaving(true);
             
+            let effectiveUserId = userId;
+            if (!effectiveUserId || effectiveUserId === "") {
+                const supabase = createClient();
+                const { data: { session } } = await supabase.auth.getSession();
+                effectiveUserId = session?.user?.id || "";
+                console.log("NeuralLinkWizard: userId recuperado via Supabase Session no client:", effectiveUserId);
+            }
+
+            if (!effectiveUserId || effectiveUserId === "") {
+                throw new Error("Não foi possível identificar o seu usuário. Por favor, recarregue a página ou faça login novamente.");
+            }
+            
             if (selectedProvider === 'elevenlabs') {
-                await updateUserFactsAction(userId, [
+                await updateUserFactsAction(effectiveUserId, [
                     { category: 'Security', property_key: 'elevenlabs_api_key', value: wizardKey }
                 ]);
             } else {
                 const keyField = selectedProvider === 'google' ? 'gemini_api_key' : 
                                 selectedProvider === 'openai' ? 'openai_api_key' : 'anthropic_api_key';
                 
-                await updateUserFactsAction(userId, [
+                await updateUserFactsAction(effectiveUserId, [
                     { category: 'Security', property_key: keyField, value: wizardKey },
                     { category: 'System', property_key: 'preferred_ai_provider', value: selectedProvider },
                     // Selecionar o primeiro modelo válido como padrão
@@ -118,7 +131,7 @@ export default function NeuralLinkWizard({ userId, onSuccess }: NeuralLinkWizard
 
                 // 3. Tentar sincronizar DNA agora que temos a chave (se o Genesis já foi feito)
                 try {
-                    await genesisSyncAction(userId);
+                    await genesisSyncAction(effectiveUserId);
                 } catch (syncErr) {
                     console.warn("NeuralLinkWizard: Falha na sincronização de DNA pós-chave:", syncErr);
                 }

@@ -11,7 +11,8 @@ import {
     Cpu,
     ExternalLink,
     CheckCircle2,
-    XCircle
+    XCircle,
+    Zap
 } from 'lucide-react';
 
 import InterviewSimulator from './InterviewSimulator';
@@ -69,6 +70,34 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
     const [isInsightsModalOpen, setIsInsightsModalOpen] = useState(false);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
+    // Quest Generation States - NEW
+    const [generatingQuest, setGeneratingQuest] = useState(false);
+    const [questSuccess, setQuestSuccess] = useState(false);
+
+    const handleGenerateQuestForJob = async (job: HunterInsight) => {
+        if (!job.gap_analysis?.missing_skills || job.gap_analysis.missing_skills.length === 0) return;
+        try {
+            setGeneratingQuest(true);
+            const res = await fetch('/api/oracle/generate-quests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    top_trends: job.gap_analysis.missing_skills.map((s: string) => ({ skill: s, count: 1 })),
+                    job_title: job.document_name
+                })
+            });
+            
+            if (res.ok) {
+                setQuestSuccess(true);
+                setTimeout(() => setQuestSuccess(false), 5000);
+            }
+        } catch (err) {
+            console.error('Failed to generate quests for job:', err);
+        } finally {
+            setGeneratingQuest(false);
+        }
+    };
 
     // Scanner
     const [viewMode, setViewMode] = useState<'DATABASE' | 'SCANNER'>('DATABASE');
@@ -277,7 +306,7 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                     layout
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     className="h-full overflow-hidden p-4 border-r border-white/5 bg-black/20 block"
-                    style={{ width: activeTab === 'Profile' ? '100%' : '33.333%', flexShrink: 0 }}
+                    style={{ width: activeTab === 'Profile' ? '100%' : '41.666%', flexShrink: 0 }}
                 >
                     <AnimatePresence mode="wait">
                         <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="h-full flex flex-col">
@@ -520,22 +549,102 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                 </div>
             )}
             {activeTab !== 'Profile' && (
-                        <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: '66.666%' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="h-full overflow-hidden p-4 bg-black/10 backdrop-blur-[2px] hidden md:block border-l border-white/5">
+                        <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: '58.333%' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="h-full overflow-hidden p-4 bg-black/10 backdrop-blur-[2px] hidden md:block border-l border-white/5">
                                     <div className="h-full flex flex-col gap-2 overflow-hidden">
-                                        <div className="p-2 rounded-xl border border-white/5 bg-white/5 backdrop-blur-sm flex-1 flex flex-col overflow-hidden">
-                                            <h3 className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 uppercase flex items-center gap-2 mb-2">
+                                        <div className="p-8 rounded-xl border border-white/5 bg-white/5 backdrop-blur-sm flex-1 flex flex-col overflow-y-auto custom-scrollbar gap-8">
+                                            <h3 className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 uppercase flex items-center gap-2 mb-2 shrink-0">
                                                 <Cpu className="w-4 h-4 text-red-500" /> Nexus de Inteligência
                                             </h3>
-                                            <MarketOracle userId={userId} />
+                                            
+                                            {/* Seção de Skills do Alvo Ativo - Transferência Semântica com Respiro Ampliado */}
+                                            {targetJobs[currentIndex] && targetJobs[currentIndex].gap_analysis ? (
+                                                <div className="flex-1 flex flex-col justify-start gap-8">
+                                                    {/* Skills da Vaga (Azul) */}
+                                                    <div className="space-y-4">
+                                                        <h4 className="text-[11px] font-black text-cyan-400 uppercase tracking-widest flex items-center gap-2">
+                                                            <Target size={14} className="text-cyan-400" /> Skills Requisitadas
+                                                        </h4>
+                                                        <div className="flex flex-wrap gap-2.5">
+                                                            {[...(targetJobs[currentIndex].gap_analysis.strong_matches || []), ...(targetJobs[currentIndex].gap_analysis.missing_skills || [])].map((skill, i) => (
+                                                                <span key={i} className="px-3.5 py-1.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl text-[10px] font-mono">
+                                                                    {skill}
+                                                                </span>
+                                                            ))}
+                                                            {[...(targetJobs[currentIndex].gap_analysis.strong_matches || []), ...(targetJobs[currentIndex].gap_analysis.missing_skills || [])].length === 0 && (
+                                                                <span className="text-xs text-zinc-500 font-mono italic">Nenhuma skill listada</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1">
+                                                        {/* Pontos Fortes (Verde) */}
+                                                        <div className="space-y-4 flex flex-col">
+                                                            <h4 className="text-[11px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                                                                <Zap size={14} className="text-emerald-500" /> Pontos Fortes
+                                                            </h4>
+                                                            <div className="flex flex-wrap gap-2.5">
+                                                                {(targetJobs[currentIndex].gap_analysis.strong_matches || []).map((skill, i) => (
+                                                                    <span key={i} className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-mono">
+                                                                        {skill}
+                                                                    </span>
+                                                                ))}
+                                                                {(targetJobs[currentIndex].gap_analysis.strong_matches || []).length === 0 && (
+                                                                    <span className="text-xs text-zinc-500 font-mono italic">Nenhum match encontrado</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Gaps Críticos (Vermelho) e Ação Direta para Gerar Trilha */}
+                                                        <div className="space-y-4 flex flex-col justify-between">
+                                                            <div className="space-y-4">
+                                                                <h4 className="text-[11px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2">
+                                                                    <Activity size={14} className="text-rose-500" /> Gaps Críticos
+                                                                </h4>
+                                                                <div className="flex flex-wrap gap-2.5">
+                                                                    {(targetJobs[currentIndex].gap_analysis.missing_skills || []).map((skill, i) => (
+                                                                        <span key={i} className="px-3 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl text-[10px] font-mono">
+                                                                            {skill}
+                                                                        </span>
+                                                                    ))}
+                                                                    {(targetJobs[currentIndex].gap_analysis.missing_skills || []).length === 0 && (
+                                                                        <span className="text-xs text-zinc-500 font-mono italic">Nenhum gap detectado</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {(targetJobs[currentIndex].gap_analysis.missing_skills || []).length > 0 && (
+                                                                <button
+                                                                    onClick={() => handleGenerateQuestForJob(targetJobs[currentIndex])}
+                                                                    disabled={generatingQuest}
+                                                                    className={`relative group/btn flex items-center justify-center gap-2 w-full py-4 rounded-2xl border border-red-500/10 transition-all duration-500 font-mono text-[10px] font-black tracking-[0.2em] uppercase overflow-hidden ${
+                                                                        generatingQuest ? 'bg-white/5 text-zinc-600 cursor-not-allowed' :
+                                                                        questSuccess ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                                                                        'bg-red-500/20 hover:bg-red-500/30 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.15)]'
+                                                                    }`}
+                                                                >
+                                                                    {generatingQuest ? <Loader2 className="w-4 h-4 animate-spin" /> : 
+                                                                     questSuccess ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4 fill-current" />}
+                                                                    {generatingQuest ? 'Induzindo...' : questSuccess ? 'Sucesso!' : 'Gerar Trilha'}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex-1 flex items-center justify-center border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
+                                                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Nenhum Alvo Ativo em Foco</span>
+                                                </div>
+                                            )}
                                         </div>
+                                        
                                         <div className="grid grid-cols-2 gap-4 shrink-0 mt-4">
-                                            <button onClick={() => setIsInsightsModalOpen(true)} className="p-6 rounded-2xl border border-white/5 bg-red-500/5 hover:bg-red-500/10 text-left transition-all group">
-                                                <div className="text-3xl font-black text-red-500 flex items-center justify-between">{insights.length} <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100" /></div>
-                                                <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mt-2">Insights Totais</div>
+                                            <button onClick={() => setIsInsightsModalOpen(true)} className="h-24 p-4 rounded-2xl border border-white/5 bg-red-500/5 hover:bg-red-500/10 text-left transition-all group flex flex-col justify-center">
+                                                <div className="text-2xl font-black text-red-500 flex items-center justify-between w-full">{insights.length} <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100" /></div>
+                                                <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mt-1">Insights Totais</div>
                                             </button>
-                                            <div className="p-6 rounded-2xl border border-white/5 bg-cyan-500/5">
-                                                <div className="text-3xl font-black text-cyan-400">{insights.filter(i => i.status === 'Applied').length}</div>
-                                                <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mt-2">Candidaturas</div>
+                                            <div className="h-24 p-4 rounded-2xl border border-white/5 bg-cyan-500/5 flex flex-col justify-center">
+                                                <div className="text-2xl font-black text-cyan-400">{insights.filter(i => i.status === 'Applied').length}</div>
+                                                <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mt-1">Candidaturas</div>
                                             </div>
                                         </div>
                                     </div>

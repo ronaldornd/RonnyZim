@@ -243,6 +243,7 @@ export async function analyzeInterviewAction(formData: FormData) {
         job_id: jobId,
         audio_url: audioUrl,
         summary: json.feedback,
+        overall_confidence: json.evaluation_score,
         behavioral_analysis: {
             overall_confidence: json.evaluation_score,
             summary: json.feedback,
