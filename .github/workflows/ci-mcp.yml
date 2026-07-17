@@ -2,12 +2,12 @@ name: CI - MCP Servers (TypeScript)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
     paths:
       - 'mcp-servers/**'
       - '.github/workflows/ci-mcp.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
     paths:
       - 'mcp-servers/**'
       - '.github/workflows/ci-mcp.yml'

@@ -2,12 +2,12 @@ name: CI - Chrome Extension (Validation)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
     paths:
       - 'chrome-extension/**'
       - '.github/workflows/ci-extension.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
     paths:
       - 'chrome-extension/**'
       - '.github/workflows/ci-extension.yml'

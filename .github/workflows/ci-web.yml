@@ -2,12 +2,12 @@ name: CI - Web App (Next.js)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
     paths:
       - 'web/**'
       - '.github/workflows/ci-web.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
     paths:
       - 'web/**'
       - '.github/workflows/ci-web.yml'
