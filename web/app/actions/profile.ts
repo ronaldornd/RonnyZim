@@ -155,8 +155,12 @@ export async function updateUserXP(userId: string, xpDelta: number, stackId?: st
                 .select()
                 .single();
             
-            if (createGlobalError) throw new Error(`Failed to create global stack: ${stackName}`);
+            if (createGlobalError || !newGlobal) throw new Error(`Failed to create global stack: ${stackName}`);
             globalStack = newGlobal;
+        }
+
+        if (!globalStack) {
+            throw new Error(`Failed to resolve or create global stack: ${stackName}`);
         }
 
         // Check if user already has this mastery
