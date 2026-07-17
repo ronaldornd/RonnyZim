@@ -25,6 +25,7 @@ import { ProfileView } from './ProfileView';
 import { InsightsListModal } from './InsightsListModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { useJobScanner } from '@/hooks/useJobScanner';
+import { injectTargetFromRadarAction } from '@/app/actions/hunter';
 
 export interface HunterInsight {
     id: string;
@@ -110,6 +111,33 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
     } = useJobScanner();
 
     const supabase = createClient();
+
+    // Radar Scraper State & Actions
+    const [radarInput, setRadarInput] = useState('');
+    const [isRadarLoading, setIsRadarLoading] = useState(false);
+    const [radarError, setRadarError] = useState<string | null>(null);
+
+    const handleRadarInject = async () => {
+        if (!radarInput.trim()) return;
+        setIsRadarLoading(true);
+        setRadarError(null);
+        try {
+            const result = await injectTargetFromRadarAction(radarInput);
+            if (result.success && result.target) {
+                setRadarInput('');
+                await fetchInsights();
+                setViewMode('DATABASE');
+                setSelectedJob(result.target as any);
+                setCurrentIndex(0);
+            } else {
+                setRadarError(result.error || 'Falha ao processar o alvo cognitivo.');
+            }
+        } catch (err: any) {
+            setRadarError(err.message || 'Erro de conexão com o Radar Scraper.');
+        } finally {
+            setIsRadarLoading(false);
+        }
+    };
 
 
     const fetchInsights = async () => {
@@ -495,7 +523,47 @@ export default function HunterBoard({ userId }: HunterBoardProps) {
                                             </div>
                                         )
                                     ) : (
-                                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-4">
+                                            {/* Card de Injeção do Radar Scraper - Glassmorphism */}
+                                            <section className="p-5 rounded-[2rem] bg-white/[0.02] border border-white/5 backdrop-blur-xl flex flex-col gap-3 shrink-0">
+                                                <div className="flex items-center justify-between">
+                                                    <h3 className="text-[9px] font-black text-red-500 uppercase tracking-[0.3em] flex items-center gap-2">
+                                                        <Zap size={12} className="text-red-500" /> Injeção de Alvo Cognitivo
+                                                    </h3>
+                                                    <span className="text-[8px] font-mono text-zinc-500 uppercase">Radar Scraper v1.0</span>
+                                                </div>
+                                                <div className="flex gap-3">
+                                                    <input 
+                                                        type="text" 
+                                                        disabled={isRadarLoading}
+                                                        value={radarInput}
+                                                        onChange={(e) => setRadarInput(e.target.value)}
+                                                        placeholder="Cole a URL da vaga (LinkedIn, Gupy...) ou digite um Termo de Busca..."
+                                                        className="flex-1 min-w-0 bg-black/40 rounded-xl px-4 py-2.5 text-xs text-zinc-300 border border-white/5 focus:border-red-500/30 focus:outline-none placeholder:text-zinc-600 transition-colors font-mono disabled:opacity-50"
+                                                    />
+                                                    <button 
+                                                        disabled={isRadarLoading || !radarInput.trim()}
+                                                        onClick={handleRadarInject}
+                                                        className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-[9px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-30 flex items-center gap-2 shrink-0 shadow-lg border border-red-500/20"
+                                                    >
+                                                        {isRadarLoading ? (
+                                                            <>
+                                                                <Loader2 size={12} className="animate-spin" />
+                                                                <span>Injetando...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Target size={12} />
+                                                                <span>Conectar</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                                {radarError && (
+                                                    <p className="text-[10px] text-rose-500 font-mono mt-1">▲ ERROR: {radarError}</p>
+                                                )}
+                                            </section>
+
                                             <div className="grid gap-4 pb-12">
                                                 {scannedJobs.map((job) => (
                                                     <JobCardActive key={job.id} job={job} onSave={async (j: any) => { const success = await saveToDossier(j); if (success) fetchInsights(); return success; }} />

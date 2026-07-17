@@ -188,7 +188,7 @@ export default function NeuralLinkWizard({ userId, onSuccess }: NeuralLinkWizard
                                             onClick={() => {
                                                 setSelectedProvider(p);
                                                 setWizardStep('key');
-                                                triggerSFX();
+                                                triggerSFX('TAB_SWITCH');
                                             }}
                                             className="w-full py-[1.125rem] px-7 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:border-cyan-500/40 hover:bg-cyan-500/5 transition-all text-left"
                                         >

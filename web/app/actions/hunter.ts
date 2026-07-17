@@ -281,3 +281,67 @@ export async function analyzeInterviewAction(formData: FormData) {
     return { success: false, error: error.message || "Erro na análise neural do áudio." };
   }
 }
+
+/**
+ * AÇÃO: Injeção de alvo usando o Radar Scraper (Python 8002)
+ */
+export async function injectTargetFromRadarAction(urlOrQuery: string) {
+  try {
+    const supabase = await createRouteHandlerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Usuário não autenticado.");
+
+    const isUrl = urlOrQuery.trim().startsWith("http://") || urlOrQuery.trim().startsWith("https://");
+    const payload = isUrl ? { url: urlOrQuery.trim() } : { query: urlOrQuery.trim() };
+
+    // 1. Chamar o serviço Python rodando localmente
+    const response = await fetch("http://localhost:8002/scrape", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errDetail = await response.json().catch(() => ({}));
+      throw new Error(errDetail.detail || `Erro na API Python (Status: ${response.status})`);
+    }
+
+    const scrapedJob = await response.json(); // Objeto do tipo JobScrapeResult
+
+    // 2. Buscar stacks reais do usuário para cálculo de match personalizado
+    const { data: stackData } = await supabase.from('user_stack_mastery')
+        .select(`
+            global_stacks (
+                name
+            )
+        `)
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+    const userStacks = stackData?.map((s: any) => s.global_stacks?.name).filter(Boolean) || [];
+    const profileSummary = userStacks.length > 0 
+      ? `Desenvolvedor com especialização em: ${userStacks.join(', ')}`
+      : "Engenheiro de Software.";
+
+    // 3. Cruzamento neural de Match
+    const matchAnalysis = await calculateMatchAction(scrapedJob.description_summary, profileSummary);
+
+    // 4. Salvar na tabela hunter_insights
+    const savedTarget = await saveTargetAction({
+      title: scrapedJob.title,
+      summary: scrapedJob.description_summary,
+      score: matchAnalysis.score || 0,
+      missing_skills: matchAnalysis.missing_skills && matchAnalysis.missing_skills.length > 0
+        ? matchAnalysis.missing_skills 
+        : scrapedJob.skills_required || [],
+      strong_matches: matchAnalysis.strong_matches && matchAnalysis.strong_matches.length > 0
+        ? matchAnalysis.strong_matches 
+        : scrapedJob.nice_to_have_skills || []
+    });
+
+    return { success: true, target: savedTarget };
+  } catch (error: any) {
+    console.error("Radar Target Injection Error:", error);
+    return { success: false, error: error.message || "Falha na conexão ou processamento cognitivo." };
+  }
+}

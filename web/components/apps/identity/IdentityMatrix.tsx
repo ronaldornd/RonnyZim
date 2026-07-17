@@ -160,7 +160,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
     const handleNeuralSync = async () => {
         if (isSyncing) return;
         setIsSyncing(true);
-        triggerSFX('click');
+        triggerSFX('TAB_SWITCH');
         try {
             await genesisSyncAction(userId);
             playSuccess();
@@ -946,7 +946,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                         <h4 className="text-xs font-black text-white uppercase tracking-widest">Contexto (Briefing)</h4>
                                     </div>
                                     <p className="text-sm text-zinc-400 leading-relaxed font-medium italic pl-4">
-                                        {selectedQuest.description.match(/\[BRIEFING\](.*?)(?=\[STEPS\]|\[CRITERIA\]|$)/is)?.[1]?.trim() || selectedQuest.description.split('[STEPS]')[0]}
+                                        {selectedQuest.description.match(/\[BRIEFING\]([\s\S]*?)(?=\[STEPS\]|\[CRITERIA\]|$)/i)?.[1]?.trim() || selectedQuest.description.split('[STEPS]')[0]}
                                     </p>
                                 </section>
 
@@ -958,7 +958,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                             <h4 className="text-xs font-black text-white uppercase tracking-widest">Protocolo de Execução</h4>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-4">
-                                            {selectedQuest.description.match(/\[STEPS\](.*?)(?=\[CRITERIA\]|$)/is)?.[1]?.trim().split(/\d+\.\s+/).filter(Boolean).map((step, idx) => (
+                                            {selectedQuest.description.match(/\[STEPS\]([\s\S]*?)(?=\[CRITERIA\]|$)/i)?.[1]?.trim().split(/\d+\.\s+/).filter(Boolean).map((step, idx) => (
                                                 <div key={idx} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex gap-4 items-start group hover:border-amber-500/20 transition-all">
                                                     <span className="text-xs font-black font-mono text-amber-500/40 group-hover:text-amber-500 transition-colors">{(idx + 1).toString().padStart(2, '0')}</span>
                                                     <p className="text-[12px] text-zinc-400 leading-relaxed group-hover:text-zinc-200">{step.trim()}</p>
@@ -976,7 +976,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                             <h4 className="text-xs font-black text-white uppercase tracking-widest">Validação de Sucesso</h4>
                                         </div>
                                         <div className="ml-4 p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-[12px] text-emerald-400/80 font-mono italic">
-                                            {selectedQuest.description.match(/\[CRITERIA\](.*?)$/is)?.[1]?.trim()}
+                                            {selectedQuest.description.match(/\[CRITERIA\]([\s\S]*?)$/i)?.[1]?.trim()}
                                         </div>
                                     </section>
                                 )}
