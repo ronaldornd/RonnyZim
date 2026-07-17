@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     try {
         // Validação de Secret de Cron (Mandatário para produção)
         const cronSecret = process.env.CRON_SECRET;
+        const authHeader = request.headers.get('authorization');
         
         if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
             console.warn(`[CRON] Acesso não autorizado detectado.`);

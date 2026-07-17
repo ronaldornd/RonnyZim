@@ -200,22 +200,20 @@ User's Latest Message: "${lastMessage}"
             tools: {
                 declare_knowledge_gap: tool({
                     description: 'When you lack crucial context or facts to answer a users prompt accurately (e.g., you do not know their seniority, salary, or current tech stack), CALL THIS TOOL to ask the user. DO NOT GUESS.',
-                    parameters: z.object({
+                    inputSchema: z.object({
                         category: z.string().describe('The category of this fact. E.g., career, emotional, habits, preference, identity, stack.'),
                         question_to_user: z.string().describe('The direct question to the user asking for the missing fact, in your persona tone.'),
                         importance: z.string().describe('High or medium priority flag.')
-                    }),
-                    execute: async () => ({ status: 'delegated' })
+                    })
                 }),
                 create_daily_quest: tool({
                     description: 'Generates a new daily quest/challenge for the user based on their skills or learning goals. Call this whenever the user asks for a challenge, study plan, or quest. Provide realistic XP rewards based on difficulty (e.g., 50 for easy, 100 for medium, 200 for hard).',
-                    parameters: z.object({
+                    inputSchema: z.object({
                         title: z.string().describe('A catchy, game-like title for the quest (e.g., "Refatoração Profunda", "Mestre do Hook").'),
                         description: z.string().describe('Detailed instructions on what the user needs to build or analyze to complete the quest.'),
                         target_stack: z.string().describe('The specific technology stack this quest trains (e.g., React, Node.js, TypeScript, PostgreSQL).'),
                         xp_reward: z.number().describe('The amount of XP the user will earn upon completing this quest.')
-                    }),
-                    execute: async () => ({ status: 'delegated' })
+                    })
                 })
             }
         });

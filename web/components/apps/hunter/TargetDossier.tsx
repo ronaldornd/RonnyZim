@@ -28,7 +28,7 @@ import {
     MessageSquare,
     Globe
 } from 'lucide-react';
-import SearchTerminal from './SearchTerminal';
+import { SearchTerminal } from './SearchTerminal';
 import SkillScanCard from '../identity/SkillScanCard';
 import CVForgeModal from './CVForgeModal';
 import ListeningRoom from './ListeningRoom';
