@@ -33,9 +33,9 @@ const cardSchema = {
             },
             required: ['frontend', 'backend', 'database', 'devops', 'design']
         },
-        daily_energy_score: { 
-            type: Type.INTEGER, 
-            description: "A total energy score from 0 to 100 based on the planetary transits for the user today." 
+        daily_energy_score: {
+            type: Type.INTEGER,
+            description: "A total energy score from 0 to 100 based on the planetary transits for the user today."
         }
     },
     required: ['cards', 'technical_affinity', 'daily_energy_score']
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
         const rawBirthTime = searchParams.get('birthTime'); // HH:mm
         const rawBirthCity = searchParams.get('birthCity'); // e.g. "São Paulo, SP, Brasil"
 
-        let apiKey = process.env.GEMINI_API_KEY!;
+        let apiKey = process.env.GOOGLE_API_KEY!;
         let modelId = 'gemini-2.0-flash';
 
         try {
@@ -79,16 +79,16 @@ export async function GET(request: Request) {
             const day = bd.getDate();
             const zodiac =
                 (month === 3 && day >= 21) || (month === 4 && day <= 19) ? 'Áries ♈' :
-                (month === 4 && day >= 20) || (month === 5 && day <= 20) ? 'Touro ♉' :
-                (month === 5 && day >= 21) || (month === 6 && day <= 20) ? 'Gêmeos ♊' :
-                (month === 6 && day >= 21) || (month === 7 && day <= 22) ? 'Câncer ♋' :
-                (month === 7 && day >= 23) || (month === 8 && day <= 22) ? 'Leão ♌' :
-                (month === 8 && day >= 23) || (month === 9 && day <= 22) ? 'Virgem ♍' :
-                (month === 9 && day >= 23) || (month === 10 && day <= 22) ? 'Libra ♎' :
-                (month === 10 && day >= 23) || (month === 11 && day <= 21) ? 'Escorpião ♏' :
-                (month === 11 && day >= 22) || (month === 12 && day <= 21) ? 'Sagitário ♐' :
-                (month === 12 && day >= 22) || (month === 1 && day <= 19) ? 'Capricórnio ♑' :
-                (month === 1 && day >= 20) || (month === 2 && day <= 18) ? 'Aquário ♒' : 'Peixes ♓';
+                    (month === 4 && day >= 20) || (month === 5 && day <= 20) ? 'Touro ♉' :
+                        (month === 5 && day >= 21) || (month === 6 && day <= 20) ? 'Gêmeos ♊' :
+                            (month === 6 && day >= 21) || (month === 7 && day <= 22) ? 'Câncer ♋' :
+                                (month === 7 && day >= 23) || (month === 8 && day <= 22) ? 'Leão ♌' :
+                                    (month === 8 && day >= 23) || (month === 9 && day <= 22) ? 'Virgem ♍' :
+                                        (month === 9 && day >= 23) || (month === 10 && day <= 22) ? 'Libra ♎' :
+                                            (month === 10 && day >= 23) || (month === 11 && day <= 21) ? 'Escorpião ♏' :
+                                                (month === 11 && day >= 22) || (month === 12 && day <= 21) ? 'Sagitário ♐' :
+                                                    (month === 12 && day >= 22) || (month === 1 && day <= 19) ? 'Capricórnio ♑' :
+                                                        (month === 1 && day >= 20) || (month === 2 && day <= 18) ? 'Aquário ♒' : 'Peixes ♓';
             const parts = [`Sol em ${zodiac} | Data: ${birthDateDisplay}`];
             if (rawBirthTime) parts.push(`Hora natal: ${rawBirthTime} (crucial para Ascendente e Cúspides das Casas)`);
             if (rawBirthCity) parts.push(`Cidade natal: ${rawBirthCity} (crucial para Ascendente e posição geográfica)`);

@@ -3,116 +3,163 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-    Zap, 
     ExternalLink, 
     Trash2, 
-    Loader2, 
-    Mic 
+    Target, 
+    Activity, 
+    CheckCircle2, 
+    XCircle, 
+    Zap, 
+    Mic,
+    Loader2,
+    Calendar,
+    ArrowUpRight
 } from 'lucide-react';
 import { HunterInsight } from './HunterBoard';
 
 interface JobCardProps {
     insight: HunterInsight;
-    onSelect: (insight: HunterInsight) => void;
+    onSelect: (job: HunterInsight) => void;
     onDelete: (id: string) => void;
     onUpdateStatus: (id: string, status: HunterInsight['status']) => void;
-    openDocument: (fileName: string) => void;
+    openDocument: (name: string) => void;
     getScoreColor: (score: number) => string;
     getStatusIcon: (status: string) => React.ReactNode;
     updatingId: string | null;
-    onStartInterview: (insight: HunterInsight) => void;
+    onStartInterview: (job: HunterInsight) => void;
 }
 
-export function JobCard({ 
+export const JobCard = ({ 
     insight, 
     onSelect, 
     onDelete, 
     onUpdateStatus, 
-    openDocument, 
-    getScoreColor, 
-    getStatusIcon, 
-    updatingId, 
-    onStartInterview 
-}: JobCardProps) {
+    openDocument,
+    getScoreColor,
+    getStatusIcon,
+    updatingId,
+    onStartInterview
+}: JobCardProps) => {
     return (
-        <motion.article
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            aria-labelledby={`job-title-${insight.id}`}
-            className="flex flex-col rounded-xl bg-white/[0.03] backdrop-blur-xl hover:bg-white/[0.07] transition-all duration-500 group/card relative overflow-hidden active:scale-[0.99]"
-        >
-            {/* Subtle Inner Glow on Hover */}
-            <div className="absolute inset-0 bg-red-500/0 group-hover/card:bg-red-500/[0.02] transition-colors duration-700 pointer-events-none" aria-hidden="true" />
-            
-            <div 
-                onClick={() => onSelect(insight)}
-                className="p-4 pb-2 flex items-start justify-between cursor-pointer relative z-10"
-            >
-                <div className="pr-6 space-y-1">
-                    <h3 id={`job-title-${insight.id}`} className="text-lg font-bold text-white tracking-tight group-hover/card:text-red-400 transition-colors duration-300" title={insight.document_name}>
-                        {insight.document_name}
-                    </h3>
-                    <div className="text-[9px] text-zinc-500 font-mono flex items-center gap-2 opacity-60">
-                        <span className="bg-white/5 px-2 py-0.5 rounded text-zinc-400">ID: {insight.id.split('-')[0]}</span>
-                        <span>•</span>
-                        <span>{new Date(insight.created_at).toLocaleDateString()}</span>
-                    </div>
-                </div>
-                <div className={`shrink-0 flex flex-col items-center justify-center p-3 rounded-xl border-none transition-all duration-500 group-hover/card:shadow-[0_0_20px_rgba(239,68,68,0.15)] ${getScoreColor(insight.score)}`}>
-                    <span className="text-2xl font-black leading-none">{insight.score}</span>
-                    <span className="text-[8px] uppercase font-black tracking-[0.2em] mt-1.5 opacity-60">Match</span>
-                </div>
+        <div className="group relative w-full h-full p-8 flex flex-col justify-between overflow-hidden">
+            {/* Background Decorative */}
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/[0.02] to-transparent pointer-events-none" />
+            <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+                <Target size={200} className="text-red-500" />
             </div>
 
-            <div className="p-4 pt-0 flex-1 flex flex-col gap-4 relative z-10">
-                <div onClick={() => onSelect(insight)} className="cursor-pointer space-y-2">
-                    <h4 className="text-[8px] uppercase tracking-[0.3em] font-black text-zinc-600">Sumário Executivo</h4>
-                    <p className="text-xs text-zinc-400 leading-relaxed font-medium">
-                        {insight.summary}
-                    </p>
+            <div className="relative z-10 flex flex-col gap-8">
+                {/* Header Info */}
+                <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-mono text-red-500/50 uppercase tracking-[0.4em]">ALVO_CONFIRMADO</span>
+                            <div className="h-px w-8 bg-red-500/20" />
+                        </div>
+                        <h3 className="text-3xl font-black text-white tracking-tighter uppercase leading-none max-w-lg group-hover:text-red-500 transition-colors duration-500">
+                            {insight.document_name.replace(/\.[^/.]+$/, "")}
+                        </h3>
+                    </div>
+                    
+                    <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center justify-center min-w-[100px] backdrop-blur-xl ${getScoreColor(insight.score)}`}>
+                        <span className="text-3xl font-black leading-none">{insight.score}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest mt-1 opacity-50">Match</span>
+                    </div>
                 </div>
 
-                {insight.gap_analysis && insight.gap_analysis.match_percentage !== undefined && (
-                    <div className="mt-1 space-y-3">
-                        <div className="flex items-center justify-between bg-red-500/[0.03] rounded-xl p-3 group/match transition-colors hover:bg-red-500/[0.08]">
-                            <div className="flex items-center gap-3">
-                                <Zap className="w-4 h-4 text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Match de Combate</span>
+                {/* Analysis Snippet */}
+                <div className="space-y-6">
+                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 backdrop-blur-md">
+                        <p className="text-lg text-zinc-400 leading-relaxed font-medium italic">
+                            "{insight.summary.slice(0, 180)}..."
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                                <Zap size={12} /> Pontos Fortes
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                                {insight.gap_analysis?.strong_matches.slice(0, 3).map((skill, i) => (
+                                    <span key={i} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-mono">
+                                        {skill}
+                                    </span>
+                                ))}
                             </div>
-                            <div className="text-xl font-black text-red-500 tracking-tighter">
-                                {insight.gap_analysis.match_percentage}%
+                        </div>
+                        <div className="space-y-3">
+                            <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2">
+                                <Activity size={12} /> Gaps Críticos
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                                {insight.gap_analysis?.missing_skills.slice(0, 3).map((skill, i) => (
+                                    <span key={i} className="px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg text-[10px] font-mono">
+                                        {skill}
+                                    </span>
+                                ))}
                             </div>
                         </div>
                     </div>
-                )}
+                </div>
+            </div>
 
-                <div className="mt-auto pt-4 flex items-center justify-between border-t border-white/[0.05]">
-                    <div className="flex items-center gap-3">
-                        <div className="opacity-70">{getStatusIcon(insight.status)}</div>
-                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${insight.status === 'Applied' ? 'text-emerald-500' : insight.status === 'Rejected' ? 'text-rose-500' : 'text-amber-500'}`}>
-                            {insight.status}
-                        </span>
+            {/* Bottom Actions */}
+            <div className="relative z-10 flex flex-col gap-6 border-t border-white/5 pt-8">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest mb-1">Status de Infiltração</span>
+                            <div className="flex items-center gap-2">
+                                {getStatusIcon(insight.status)}
+                                <span className="text-xs font-bold text-white uppercase tracking-wider">{
+                                    insight.status === 'Evaluating' ? 'AVALIAÇÃO' : 
+                                    insight.status === 'Applied' ? 'CANDIDATADO' : 
+                                    'REJEITADO'
+                                }</span>
+                            </div>
+                        </div>
+                        <div className="w-px h-8 bg-white/5" />
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest mb-1">Data da Varredura</span>
+                            <div className="flex items-center gap-2 text-zinc-400">
+                                <Calendar size={12} />
+                                <span className="text-xs font-bold">{new Date(insight.created_at).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button onClick={(e) => { e.stopPropagation(); openDocument(insight.document_name); }} className="p-2.5 rounded-lg bg-white/5 hover:bg-cyan-500/10 text-zinc-400 hover:text-cyan-400 transition-all duration-300">
-                            <ExternalLink className="w-3.5 h-3.5" />
+                        <button 
+                            onClick={() => openDocument(insight.document_name)}
+                            className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white transition-all"
+                        >
+                            <ExternalLink size={18} />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(insight.id); }} disabled={updatingId === insight.id} className="p-2.5 rounded-lg bg-white/5 hover:bg-red-500/10 text-zinc-400 hover:text-red-500 transition-all duration-300">
-                            {updatingId === insight.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        <button 
+                            onClick={() => onDelete(insight.id)}
+                            className="p-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition-all"
+                        >
+                            {updatingId === insight.id ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
                         </button>
                     </div>
                 </div>
 
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onStartInterview(insight); }}
-                    className="w-full flex items-center justify-center gap-3 py-2 rounded-lg bg-red-500/5 hover:bg-red-500/10 text-red-500 transition-all duration-500 group/btn relative overflow-hidden active:scale-[0.98]"
-                >
-                    <div className="absolute inset-0 bg-red-500/0 group-hover/btn:bg-red-500/[0.05] transition-colors" />
-                    <Mic className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
-                    <span className="text-[9px] font-black font-mono uppercase tracking-[0.3em]">Iniciar Simulação</span>
-                </button>
+                <div className="grid grid-cols-2 gap-4">
+                    <button 
+                        onClick={() => onSelect(insight)}
+                        className="group/btn flex items-center justify-center gap-3 py-5 rounded-3xl bg-red-600 text-white font-black uppercase text-[10px] tracking-[0.3em] hover:bg-red-500 transition-all shadow-[0_10px_40px_rgba(239,68,68,0.2)]"
+                    >
+                        Abrir Dossiê <ArrowUpRight className="group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" size={16} />
+                    </button>
+                    <button 
+                        onClick={() => onStartInterview(insight)}
+                        className="flex items-center justify-center gap-3 py-5 rounded-3xl bg-white/5 border border-white/10 text-white font-black uppercase text-[10px] tracking-[0.3em] hover:bg-white/10 transition-all"
+                    >
+                        <Mic size={16} className="text-red-500" /> Simular Entrevista
+                    </button>
+                </div>
             </div>
-        </motion.article>
+        </div>
     );
-}
+};

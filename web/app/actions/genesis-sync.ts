@@ -123,7 +123,7 @@ export async function genesisSyncAction(userId: string) {
     await supabase.from('user_facts').upsert(telemetryFacts, { onConflict: 'user_id,property_key' });
 
     // 5. Injetar Quests (Deleta antigas pendentes para esse reset limpo)
-    await supabase.from('daily_quests').delete().eq('user_id', userId).eq('status', 'pending');
+    await supabase.from('daily_quests').delete().eq('user_id', userId).eq('status', 'Active');
 
     const questsToInsert = syncData.quests.map((q: any) => {
         return {
@@ -131,8 +131,8 @@ export async function genesisSyncAction(userId: string) {
             title: q.title,
             description: q.description,
             xp_reward: q.xp_reward,
-            stack_name: q.target_stack || 'General',
-            status: 'pending'
+            target_stack: q.target_stack || 'General',
+            status: 'Active'
         };
     });
 

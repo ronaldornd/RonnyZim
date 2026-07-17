@@ -107,7 +107,7 @@ export default function ListeningRoom({ jobId, isLive = false, lastEvaluationTim
         return (
             <div className="w-full h-full flex flex-col items-center justify-center p-12 bg-black/20">
                 <Loader2 className="animate-spin text-cyan-500 mb-4" size={32} />
-                <span className="text-[10px] font-mono text-cyan-500/50 uppercase tracking-[0.4em]">Neural Link Sync...</span>
+                <span className="text-[10px] font-mono text-cyan-500/50 uppercase tracking-[0.4em]">Sincronia Neural...</span>
             </div>
         );
     }
@@ -118,7 +118,7 @@ export default function ListeningRoom({ jobId, isLive = false, lastEvaluationTim
                 <Radar className="text-zinc-800 animate-pulse" size={48} />
                 <div className="space-y-1">
                     <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Aguardando Captura</h3>
-                    <p className="text-[10px] text-zinc-700 uppercase max-w-[200px]">Inicie a entrevista para começar a análise de sinal lÍmbico.</p>
+                    <p className="text-[10px] text-zinc-700 uppercase max-w-[200px]">Inicie a entrevista para começar a análise de sinal límbico.</p>
                 </div>
             </div>
         );
@@ -131,12 +131,12 @@ export default function ListeningRoom({ jobId, isLive = false, lastEvaluationTim
                 <div className="flex items-center gap-4">
                     <Radar className="w-5 h-5 text-cyan-500" />
                     <div>
-                        <h2 className="text-[10px] font-black text-white uppercase tracking-[0.3em]">LISTENING ROOM</h2>
-                        <span className="text-[9px] text-cyan-500/60 uppercase font-bold">BIO-SIGNAL INTERCEPTOR</span>
+                        <h2 className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SALA DE ESCUTA</h2>
+                        <span className="text-[9px] text-cyan-500/60 uppercase font-bold">INTERCEPTADOR DE BIOSINAIS</span>
                     </div>
                 </div>
                 <div className="text-right">
-                    <span className="text-[9px] text-zinc-600 uppercase tracking-widest block mb-1">CONFIDENCE</span>
+                    <span className="text-[9px] text-zinc-600 uppercase tracking-widest block mb-1">CONFIANÇA</span>
                     <span className={`text-xl font-black font-mono ${data.analysis.overall_confidence >= 70 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {data.analysis.overall_confidence}%
                     </span>
@@ -173,12 +173,12 @@ export default function ListeningRoom({ jobId, isLive = false, lastEvaluationTim
                     </div>
                 </div>
 
-                {/* Behavioral Analysis - NEW */}
+                {/* Behavioral Analysis */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 text-zinc-500">
                             <Fingerprint size={12} />
-                            <span className="text-[9px] font-bold uppercase tracking-widest">Traits</span>
+                            <span className="text-[9px] font-bold uppercase tracking-widest">Traços</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {data.analysis.behavioral_traits?.map((trait, i) => (
@@ -203,12 +203,12 @@ export default function ListeningRoom({ jobId, isLive = false, lastEvaluationTim
                     </div>
                 </div>
 
-                {/* Red Flags - NEW */}
+                {/* Red Flags */}
                 {data.analysis.red_flags?.length > 0 && (
                     <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-5 space-y-3">
                         <div className="flex items-center gap-2 text-rose-500">
                             <AlertTriangle size={14} />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Red Flags Detected</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Sinais de Alerta</span>
                         </div>
                         <ul className="space-y-2">
                             {data.analysis.red_flags.map((flag, i) => (
@@ -224,7 +224,7 @@ export default function ListeningRoom({ jobId, isLive = false, lastEvaluationTim
                 <div className="space-y-4">
                     <div className="flex items-center gap-3">
                         <Activity size={12} className="text-zinc-600" />
-                        <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Event Timeline</span>
+                        <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Linha do Tempo</span>
                     </div>
                     <div className="space-y-2">
                         {data.analysis.markers.map((marker, idx) => (
@@ -241,7 +241,7 @@ export default function ListeningRoom({ jobId, isLive = false, lastEvaluationTim
 
                 {/* Post-Mortem */}
                 <div className="space-y-3">
-                    <span className="text-[9px] font-bold text-cyan-500/40 uppercase tracking-widest block">Summary Post-Mortem</span>
+                    <span className="text-[9px] font-bold text-cyan-500/40 uppercase tracking-widest block">Resumo Pós-Morte</span>
                     <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
                         <p className="text-[13px] text-zinc-400 leading-relaxed italic font-light">
                             "{data.analysis.summary}"

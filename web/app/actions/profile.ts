@@ -105,7 +105,7 @@ export async function getProfileData(userId: string) {
         .from('daily_quests')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'pending')
+        .eq('status', 'Active')
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -114,14 +114,14 @@ export async function getProfileData(userId: string) {
         .from('daily_quests')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'completed')
+        .eq('status', 'Completed')
         .order('created_at', { ascending: false })
         .limit(3);
 
     return {
         stacks: (stacks || []) as unknown as UserStack[],
         facts: facts as UserFacts,
-        quests: (quests || []).map(q => ({ ...q, completed: q.status === 'completed' })) as DailyQuest[],
+        quests: (quests || []).map(q => ({ ...q, completed: q.status === 'Completed' })) as DailyQuest[],
         completedQuests: completedQuests || [],
         telemetry: {
             integrity: Number(facts.telemetry_integrity) || 0,
@@ -131,14 +131,70 @@ export async function getProfileData(userId: string) {
     };
 }
 
-export async function updateUserXP(userId: string, stackId: string, xpDelta: number) {
+export async function updateUserXP(userId: string, xpDelta: number, stackId?: string, stackName?: string) {
     const supabase = await createRouteHandlerClient();
+    let targetId = stackId;
 
-    // 1. Get current state
+    // 1. Resolve stackId if only name is provided or if stackId is not a valid UUID
+    const isUuid = (val?: string) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+
+    if (!isUuid(targetId) && stackName) {
+        console.log(`[XP] Resolving stack by name: ${stackName}`);
+        // Try to find in global_stacks
+        let { data: globalStack } = await supabase
+            .from('global_stacks')
+            .select('id')
+            .ilike('name', stackName)
+            .maybeSingle();
+
+        if (!globalStack) {
+            console.log(`[XP] Creating new global tech: ${stackName}`);
+            const { data: newGlobal, error: createGlobalError } = await supabase
+                .from('global_stacks')
+                .insert({ name: stackName, category: 'Não Categorizado' })
+                .select()
+                .single();
+            
+            if (createGlobalError) throw new Error(`Failed to create global stack: ${stackName}`);
+            globalStack = newGlobal;
+        }
+
+        // Check if user already has this mastery
+        const { data: mastery } = await supabase
+            .from('user_stack_mastery')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('stack_id', globalStack.id)
+            .maybeSingle();
+
+        if (!mastery) {
+            console.log(`[XP] Provisioning mastery for user: ${userId} -> ${stackName}`);
+            const { data: newMastery, error: createMasteryError } = await supabase
+                .from('user_stack_mastery')
+                .insert({ 
+                    user_id: userId, 
+                    stack_id: globalStack.id,
+                    current_level: 1,
+                    current_xp: 0,
+                    is_active: true
+                })
+                .select()
+                .single();
+
+            if (createMasteryError) throw new Error("Failed to provision user mastery");
+            targetId = newMastery.id;
+        } else {
+            targetId = mastery.id;
+        }
+    }
+
+    if (!targetId || !isUuid(targetId)) throw new Error(`Could not resolve stack destination for ${stackName || stackId}`);
+
+    // 2. Get current state
     const { data: current, error: fetchError } = await supabase
         .from('user_stack_mastery')
         .select('current_xp, current_level')
-        .eq('id', stackId)
+        .eq('id', targetId)
         .single();
     
     if (fetchError || !current) throw new Error("Failed to fetch current stack state");
@@ -159,7 +215,7 @@ export async function updateUserXP(userId: string, stackId: string, xpDelta: num
             current_xp: newXp,
             current_level: newLevel
         })
-        .eq('id', stackId);
+        .eq('id', targetId);
 
     if (updateError) throw new Error(updateError.message);
 
@@ -167,22 +223,22 @@ export async function updateUserXP(userId: string, stackId: string, xpDelta: num
     revalidateTag(`profile-${userId}`, 'max');
     revalidatePath('/os');
     
-    return { newXp, newLevel };
+    return { newXp, newLevel, stackId: targetId };
 }
 
-export async function completeQuestAction(userId: string, questId: string, stackId: string, xpReward: number) {
+export async function completeQuestAction(userId: string, questId: string, stackId: string, xpReward: number, stackName?: string) {
     const supabase = await createRouteHandlerClient();
 
     // 1. Mark quest as completed
     const { error: questError } = await supabase
         .from('daily_quests')
-        .update({ status: 'completed' })
+        .update({ status: 'Completed' })
         .eq('id', questId);
     
     if (questError) throw new Error("Failed to update quest status");
 
-    // 2. Update XP
-    const result = await updateUserXP(userId, stackId, xpReward);
+    // 2. Update XP (robust name/id resolution)
+    const result = await updateUserXP(userId, xpReward, stackId, stackName);
 
     revalidateTag(`profile-${userId}`, 'max');
     revalidatePath('/os');

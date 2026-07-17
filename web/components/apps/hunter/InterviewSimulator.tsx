@@ -60,7 +60,6 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                 .single();
 
             if (insight?.action_plan?.history && insight.action_plan.history.length > 0) {
-                console.log("[InterviewSimulator] Sessão restaurada para:", jobId);
                 setHistory(insight.action_plan.history);
                 setState('waiting_for_user');
                 interviewStartedRef.current = true;
@@ -97,7 +96,7 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                 audioRef.current = null;
             }
             const response = await fetch(`/api/tts?text=${encodeURIComponent(text)}`);
-            if (!response.ok) throw new Error('Failed to fetch audio');
+            if (!response.ok) throw new Error('Falha ao buscar áudio');
             const blob = await response.blob();
             const audioUrl = URL.createObjectURL(blob);
             const audio = new Audio(audioUrl);
@@ -134,7 +133,6 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
             const formData = new FormData();
             formData.append('audio', blob, 'interview.webm');
             formData.append('jobDescription', jobDescription);
-            // IMPORTANTE: Enviamos o histórico ATUALIZADO para a IA
             formData.append('history', JSON.stringify(history.slice(-6)));
             formData.append('userName', userName);
             formData.append('jobId', jobId);
@@ -171,6 +169,18 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
         }
     };
 
+    const formatState = (s: string) => {
+        switch(s) {
+            case 'idle': return 'LINK ESTABELECIDO';
+            case 'hunter_speaking': return 'HUNTER FALANDO';
+            case 'waiting_for_user': return 'AGUARDANDO VOCÊ';
+            case 'recording_user': return 'GRAVANDO RESPOSTA';
+            case 'evaluating': return 'PROCESSAMENTO NEURAL';
+            case 'finished': return 'SESSÃO FINALIZADA';
+            default: return s.toUpperCase();
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -182,7 +192,7 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                     <div className="flex items-center gap-3">
                         <Activity size={16} className="text-primary animate-pulse" />
                         <div className="flex flex-col">
-                            <h2 className="font-mono text-[9px] font-bold tracking-[0.1em] text-primary/60 uppercase">ARENA :: TACTICAL INTERVIEW</h2>
+                            <h2 className="font-mono text-[9px] font-bold tracking-[0.1em] text-primary/60 uppercase">ARENA :: ENTREVISTA TÁTICA</h2>
                             <span className="text-[12px] font-bold text-foreground tracking-tight uppercase">HUNTER-ZIM v3.1</span>
                         </div>
                     </div>
@@ -224,7 +234,7 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full flex justify-center py-4">
                                         <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 flex items-center gap-6 max-w-md shadow-2xl backdrop-blur-xl">
                                             <div className="flex flex-col items-center shrink-0">
-                                                <span className="text-[8px] font-mono text-primary/60 uppercase tracking-widest mb-1">SCORE</span>
+                                                <span className="text-[8px] font-mono text-primary/60 uppercase tracking-widest mb-1">PONTOS</span>
                                                 <span className="text-3xl font-black text-primary font-mono">{evaluation.score}</span>
                                             </div>
                                             <div className="w-px h-10 bg-primary/20" />
@@ -273,7 +283,7 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
                                     <span className={`text-[9px] font-mono font-bold uppercase tracking-widest ${
                                         state === 'recording_user' ? 'text-primary animate-pulse' : 'text-zinc-500'
                                     }`}>
-                                        {isRestoring ? 'RESTORING MEMORY' : state === 'idle' ? 'LINK ESTABLISHED' : state.replace('_', ' ')}
+                                        {isRestoring ? 'RESTAURANDO MEMÓRIA' : formatState(state)}
                                     </span>
                                     <span className="text-[12px] text-zinc-400 font-medium">
                                         {isRestoring ? 'Sincronizando sinapses...' :
@@ -293,10 +303,10 @@ export default function InterviewSimulator({ isOpen, onClose, jobId, jobDescript
 
                 <div className="px-8 py-3 text-[8px] font-mono text-zinc-700 flex justify-between items-center border-t border-white/[0.03]">
                     <div className="flex gap-6 uppercase tracking-widest">
-                        <div className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,1)]"/><span>NODE :: PERSISTENT</span></div>
-                        <span className="text-primary/30">COGNITIVE ENGINE v3.1.0</span>
+                        <div className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,1)]"/><span>NÓ :: PERSISTENTE</span></div>
+                        <span className="text-primary/30">MOTOR COGNITIVO v3.1.0</span>
                     </div>
-                    <span>SESSION_ID :: {jobId.slice(0, 12)}</span>
+                    <span>ID_SESSÃO :: {jobId.slice(0, 12)}</span>
                 </div>
             </div>
         </div>

@@ -59,10 +59,10 @@ export default function SettingsApp({ userId }: { userId: string }) {
 
     // Mapping providers to keys and links
     const providerConfig = {
-        google: { key: geminiKey, set: setGeminiKey, link: 'https://aistudio.google.com/app/apikey', label: 'Gemini API Key' },
-        openai: { key: openaiKey, set: setOpenaiKey, link: 'https://platform.openai.com/api-keys', label: 'OpenAI API Key' },
-        anthropic: { key: anthropicKey, set: setAnthropicKey, link: 'https://console.anthropic.com/settings/keys', label: 'Anthropic API Key' },
-        elevenlabs: { key: elevenlabsKey, set: setElevenlabsKey, link: 'https://elevenlabs.io/app/settings/api-keys', label: 'ElevenLabs API Key' }
+        google: { key: geminiKey, set: setGeminiKey, link: 'https://aistudio.google.com/app/apikey', label: 'Chave API Gemini' },
+        openai: { key: openaiKey, set: setOpenaiKey, link: 'https://platform.openai.com/api-keys', label: 'Chave API OpenAI' },
+        anthropic: { key: anthropicKey, set: setAnthropicKey, link: 'https://console.anthropic.com/settings/keys', label: 'Chave API Anthropic' },
+        elevenlabs: { key: elevenlabsKey, set: setElevenlabsKey, link: 'https://elevenlabs.io/app/settings/api-keys', label: 'Chave API ElevenLabs' }
     };
 
     useEffect(() => {
@@ -72,12 +72,12 @@ export default function SettingsApp({ userId }: { userId: string }) {
     // Fetch models whenever provider or its key changes (with debounce)
     useEffect(() => {
         const currentKey = (providerConfig as any)[selectedProvider].key;
-        if (currentKey && currentKey.length > 5) {
+        if (currentKey && currentKey.length > 5 && !currentKey.startsWith('****')) {
             const timer = setTimeout(() => {
                 fetchModels(selectedProvider, currentKey);
             }, 800);
             return () => clearTimeout(timer);
-        } else {
+        } else if (!currentKey) {
             setModels([]);
         }
     }, [selectedProvider, geminiKey, openaiKey, anthropicKey, elevenlabsKey]);
@@ -125,7 +125,6 @@ export default function SettingsApp({ userId }: { userId: string }) {
                     if (f.property_key === 'preferred_ai_model') setSelectedModel(f.value);
                     if (f.property_key === 'preferred_audio_model') setSelectedAudioModel(f.value);
                     
-                    // Se a chave vier criptografada do banco, mostramos um placeholder visual
                     const displayValue = f.value?.startsWith('enc:') ? '****************' : f.value;
                     
                     if (f.property_key === 'gemini_api_key') setGeminiKey(displayValue);
@@ -158,12 +157,12 @@ export default function SettingsApp({ userId }: { userId: string }) {
             const result = await saveSettingsAction(updates);
             if (!result.success) throw new Error(result.error);
 
-            setSuccessMsg('Brain parameters updated successfully.');
+            setSuccessMsg('Parâmetros cerebrais sincronizados com sucesso.');
             setTimeout(() => setSuccessMsg(null), 4000);
 
         } catch (err: any) {
             console.error(err);
-            setError('Neural sync failed: ' + err.message);
+            setError('Sincronização neural falhou: ' + err.message);
         } finally {
             setSaving(false);
         }
@@ -181,14 +180,13 @@ export default function SettingsApp({ userId }: { userId: string }) {
             setError(null);
             const res = await wipeMemoryAction();
             if (res.success) {
-                // Forçar recarregamento para limpar estados globais e caches
                 window.location.reload();
             } else {
                 throw new Error(res.error);
             }
         } catch (err: any) {
             console.error(err);
-            setError('Neural Purge Failed: ' + err.message);
+            setError('Purga Neural Falhou: ' + err.message);
             setConfirmWipe(false);
         } finally {
             setWiping(false);
@@ -201,7 +199,6 @@ export default function SettingsApp({ userId }: { userId: string }) {
         { id: 'system', label: 'Sistema', icon: CircuitBoard, color: 'text-zinc-400' },
     ];
 
-    // Group models by family for the dropdown
     const groupedModels = models.reduce((acc, model) => {
         const family = model.family || 'Outros';
         if (!acc[family]) acc[family] = [];
@@ -211,7 +208,6 @@ export default function SettingsApp({ userId }: { userId: string }) {
 
     return (
         <div className="h-full w-full bg-[#050505] text-zinc-300 flex overflow-hidden">
-            {/* Sidebar Navigation */}
             <aside className="w-64 border-r border-white/5 bg-[#080808] flex flex-col p-6 gap-8">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-white/5 rounded-lg">
@@ -245,7 +241,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
                         <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl">
                             <p className="text-[9px] font-mono text-blue-400 uppercase tracking-widest leading-relaxed">
                                 <Zap className="w-3 h-3 inline mr-2" />
-                                Modelos auto-descobertos via Neural Link: {models.length} ativos
+                                Modelos auto-descobertos: {models.length} ativos
                             </p>
                         </div>
                     )}
@@ -260,7 +256,6 @@ export default function SettingsApp({ userId }: { userId: string }) {
                 </div>
             </aside>
 
-            {/* Main Content Area */}
             <main className="flex-1 overflow-y-auto p-8 scrollbar-none">
                 <div className="max-w-4xl mx-auto">
                     <AnimatePresence mode="wait">
@@ -282,12 +277,11 @@ export default function SettingsApp({ userId }: { userId: string }) {
                     {activeTab === 'intelligence' && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                             <header>
-                                <h1 className="text-3xl font-black text-white tracking-tight">Vínculo Neural Unificado</h1>
-                                <p className="text-zinc-500 text-xs font-mono mt-2 uppercase tracking-[0.3em]">AI Provider & Model Discovery</p>
+                                <h1 className="text-3xl font-black text-white tracking-tight">Link Neural de IA</h1>
+                                <p className="text-zinc-500 text-xs font-mono mt-2 uppercase tracking-[0.3em]">Descoberta de Modelos e Provedores</p>
                             </header>
 
                             <section className="bg-white/5 border border-white/5 rounded-2xl p-6 space-y-6">
-                                {/* Provider Selector */}
                                 <div className="space-y-4">
                                     <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Provedor Ativo</label>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -311,11 +305,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
                                     </div>
                                 </div>
 
-                                {/* API Key Input Contextual */}
-                                <motion.div 
-                                    layout
-                                    className="p-4 bg-black/40 border border-white/5 rounded-2xl space-y-3"
-                                >
+                                <motion.div layout className="p-4 bg-black/40 border border-white/5 rounded-2xl space-y-3">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <Key className="w-3.5 h-3.5 text-blue-400" />
@@ -323,12 +313,7 @@ export default function SettingsApp({ userId }: { userId: string }) {
                                                 {(providerConfig as any)[selectedProvider].label}
                                             </label>
                                         </div>
-                                        <a 
-                                            href={(providerConfig as any)[selectedProvider].link} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
-                                            className="text-[8px] text-zinc-500 hover:text-white transition-colors uppercase font-mono tracking-tighter flex items-center gap-1"
-                                        >
+                                        <a href={(providerConfig as any)[selectedProvider].link} target="_blank" rel="noopener noreferrer" className="text-[8px] text-zinc-500 hover:text-white transition-colors uppercase font-mono tracking-tighter flex items-center gap-1">
                                             Obter Chave <ExternalLink size={9} />
                                         </a>
                                     </div>
@@ -340,75 +325,47 @@ export default function SettingsApp({ userId }: { userId: string }) {
                                             placeholder={`Insira sua chave para carregar modelos...`}
                                             className="w-full bg-black/60 border border-white/10 text-white p-4 rounded-xl focus:outline-none focus:border-blue-500/30 transition-all font-mono text-xs placeholder:text-zinc-800"
                                         />
-                                        <button 
-                                            onClick={() => setShowKey(!showKey)}
-                                            className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-700 hover:text-white transition-colors"
-                                        >
+                                        <button onClick={() => setShowKey(!showKey)} className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-700 hover:text-white transition-colors">
                                             {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
                                         </button>
                                     </div>
                                 </motion.div>
 
-                                {/* Model Selectors Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Brain Selector */}
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Motor do Cérebro (Lógica)</label>
                                             {loadingModels && <Loader2 className="w-3 h-3 text-blue-500 animate-spin" />}
                                         </div>
-                                        
-                                        <select 
-                                            value={selectedModel}
-                                            onChange={(e) => setSelectedModel(e.target.value)}
-                                            disabled={models.length === 0}
-                                            className="w-full bg-black/60 border border-white/10 text-white p-4 rounded-xl focus:outline-none focus:border-blue-500/50 appearance-none font-mono text-[11px] disabled:opacity-30 disabled:cursor-not-allowed"
-                                        >
+                                        <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} disabled={models.length === 0} className="w-full bg-black/60 border border-white/10 text-white p-4 rounded-xl focus:outline-none focus:border-blue-500/50 appearance-none font-mono text-[11px] disabled:opacity-30">
                                             <option value="">{loadingModels ? 'Buscando rastro neural...' : 'Aguardando chave...'}</option>
                                             {Object.entries(groupedModels).map(([family, familyModels]) => (
                                                 <optgroup key={family} label={family} className="bg-[#080808] text-blue-400 py-2">
                                                     {familyModels.map(model => (
-                                                        <option key={model.id} value={model.id} className="text-white bg-[#080808]">
-                                                            {model.displayName}
-                                                        </option>
+                                                        <option key={model.id} value={model.id}>{model.displayName}</option>
                                                     ))}
                                                 </optgroup>
                                             ))}
                                         </select>
                                     </div>
 
-                                    {/* Audio Selector */}
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Motor de Áudio (Voz/Sons)</label>
+                                            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Motor de Áudio (Voz)</label>
                                             {loadingModels && <Loader2 className="w-3 h-3 text-emerald-500 animate-spin" />}
                                         </div>
-                                        
-                                        <select 
-                                            value={selectedAudioModel}
-                                            onChange={(e) => setSelectedAudioModel(e.target.value)}
-                                            disabled={models.length === 0}
-                                            className="w-full bg-black/60 border border-white/10 text-white p-4 rounded-xl focus:outline-none focus:border-emerald-500/50 appearance-none font-mono text-[11px] disabled:opacity-30 disabled:cursor-not-allowed"
-                                        >
+                                        <select value={selectedAudioModel} onChange={(e) => setSelectedAudioModel(e.target.value)} disabled={models.length === 0} className="w-full bg-black/60 border border-white/10 text-white p-4 rounded-xl focus:outline-none focus:border-emerald-500/50 appearance-none font-mono text-[11px] disabled:opacity-30">
                                             <option value="">{loadingModels ? 'Sintonizando frequências...' : 'Aguardando chave...'}</option>
                                             {Object.entries(groupedModels).map(([family, familyModels]) => (
                                                 <optgroup key={family} label={family} className="bg-[#080808] text-emerald-400 py-2">
                                                     {familyModels.map(model => (
-                                                        <option key={model.id} value={model.id} className="text-white bg-[#080808]">
-                                                            {model.displayName}
-                                                        </option>
+                                                        <option key={model.id} value={model.id}>{model.displayName}</option>
                                                     ))}
                                                 </optgroup>
                                             ))}
                                         </select>
                                     </div>
                                 </div>
-
-                                {models.length > 0 && !loadingModels && (
-                                    <p className="text-[9px] text-zinc-600 font-mono uppercase tracking-widest text-center">
-                                        {models.length} modelos detectados. Configurações salvas persistirão na Supabase.
-                                    </p>
-                                )}
                             </section>
                         </motion.div>
                     )}
@@ -417,18 +374,14 @@ export default function SettingsApp({ userId }: { userId: string }) {
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                             <header>
                                 <h1 className="text-3xl font-black text-white tracking-tight">Estética Visual</h1>
-                                <p className="text-zinc-500 text-xs font-mono mt-2 uppercase tracking-[0.3em]">UI Customization & Theming</p>
+                                <p className="text-zinc-500 text-xs font-mono mt-2 uppercase tracking-[0.3em]">Customização de UI e Temas</p>
                             </header>
-
-                            <section className="bg-white/5 border border-white/5 rounded-2xl p-8 space-y-6">
-                                <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/10 rounded-xl gap-4">
-                                    <Sparkles className="w-12 h-12 text-purple-500/20 animate-pulse" />
-                                    <p className="text-xs font-mono text-zinc-600 uppercase tracking-[0.4em]">Feature Under Development</p>
-                                    <p className="text-[9px] text-zinc-700 font-mono max-w-sm text-center uppercase leading-loose">
-                                        Controle de intensidade de glassmorphism, esquemas de cores (Obsidian, Emerald, Crimson) 
-                                        e densidade da interface em breve.
-                                    </p>
-                                </div>
+                            <section className="bg-white/5 border border-white/5 rounded-2xl p-8 py-20 text-center flex flex-col items-center gap-4">
+                                <Sparkles className="w-12 h-12 text-purple-500/20 animate-pulse" />
+                                <p className="text-xs font-mono text-zinc-600 uppercase tracking-[0.4em]">Módulo em Desenvolvimento</p>
+                                <p className="text-[9px] text-zinc-700 font-mono max-w-sm uppercase leading-loose">
+                                    Controle de intensidade de vidro, esquemas de cores (Obsidian, Emerald, Crimson) em breve.
+                                </p>
                             </section>
                         </motion.div>
                     )}
@@ -437,44 +390,24 @@ export default function SettingsApp({ userId }: { userId: string }) {
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                             <header>
                                 <h1 className="text-3xl font-black text-white tracking-tight">Sistema & Kernel</h1>
-                                <p className="text-zinc-500 text-xs font-mono mt-2 uppercase tracking-[0.3em]">Lifecycle & Diagnostic Tools</p>
+                                <p className="text-zinc-500 text-xs font-mono mt-2 uppercase tracking-[0.3em]">Ciclo de Vida e Diagnósticos</p>
                             </header>
-
                             <section className="bg-white/5 border border-white/5 rounded-2xl p-8 space-y-6">
-                                <div className="space-y-4">
-                                    <h3 className="text-[10px] uppercase font-mono tracking-widest text-zinc-500">Critical Actions</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <button
-                                            onClick={resetBoot}
-                                            className="bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 text-red-500 p-6 rounded-2xl transition-all group flex flex-col gap-3"
-                                        >
-                                            <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-700" />
-                                            <div className="text-left">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest">Reiniciar Boot</p>
-                                                <p className="text-[8px] opacity-60 uppercase mt-1">Apaga o cache local de tutorial</p>
-                                            </div>
-                                        </button>
-
-                                        <button 
-                                            onClick={handleWipe}
-                                            disabled={wiping}
-                                            className={`border p-6 rounded-2xl transition-all group flex flex-col gap-3 ${
-                                                confirmWipe 
-                                                ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' 
-                                                : 'bg-zinc-900/50 border-white/5 text-zinc-600 hover:border-red-500/20 hover:text-red-500/60'
-                                            }`}
-                                        >
-                                            {wiping ? <Loader2 className="w-5 h-5 animate-spin" /> : <Unplug className="w-5 h-5" />}
-                                            <div className="text-left">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest">
-                                                    {confirmWipe ? 'CONFIRMAR PURGA?' : 'Wipe Memory'}
-                                                </p>
-                                                <p className="text-[8px] opacity-60 uppercase mt-1">
-                                                    {confirmWipe ? 'Pressione novamente para apagar tudo.' : 'Limpa todos os fatos aprendidos'}
-                                                </p>
-                                            </div>
-                                        </button>
-                                    </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button onClick={resetBoot} className="bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 text-red-500 p-6 rounded-2xl transition-all group flex flex-col gap-3">
+                                        <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-700" />
+                                        <div className="text-left">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest">Reiniciar Boot</p>
+                                            <p className="text-[8px] opacity-60 uppercase mt-1">Limpa cache de tutorial</p>
+                                        </div>
+                                    </button>
+                                    <button onClick={handleWipe} disabled={wiping} className={`border p-6 rounded-2xl transition-all group flex flex-col gap-3 ${confirmWipe ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' : 'bg-zinc-900/50 border-white/5 text-zinc-600 hover:text-red-500/60'}`}>
+                                        {wiping ? <Loader2 className="w-5 h-5 animate-spin" /> : <Unplug className="w-5 h-5" />}
+                                        <div className="text-left">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest">{confirmWipe ? 'CONFIRMAR PURGA?' : 'Limpar Memória'}</p>
+                                            <p className="text-[8px] opacity-60 uppercase mt-1">{confirmWipe ? 'Ação irreversível.' : 'Apaga todos os fatos aprendidos'}</p>
+                                        </div>
+                                    </button>
                                 </div>
                             </section>
                         </motion.div>

@@ -258,13 +258,14 @@ export async function analyzeInterviewAction(formData: FormData) {
 
     // 4. Criar Missão de Redenção real se necessário
     if (json.quest_generated) {
-        await supabase.from('quests').insert({
+        const gap = json.analysis?.technical_gaps?.[0] || 'Desafio Técnico';
+        await supabase.from('daily_quests').insert({
             user_id: user.id,
-            title: `Redenção: ${json.analysis?.technical_gaps?.[0] || 'Desafio Técnico'}`,
+            title: `Redenção: ${gap}`,
             description: `O Hunter-Zim detectou uma falha crítica na sua entrevista. Domine este tópico para recuperar sua reputação. Feedback: ${json.feedback}`,
-            difficulty: 'hard',
+            target_stack: gap,
             xp_reward: 250,
-            status: 'active'
+            status: 'Active'
         });
     }
 

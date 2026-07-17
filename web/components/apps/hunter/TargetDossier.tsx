@@ -162,7 +162,7 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
     };
 
     const tabs: {id: TabType, label: string, icon: any}[] = [
-        { id: 'Intel', label: 'Intel', icon: LayoutDashboard },
+        { id: 'Intel', label: 'Inteligência', icon: LayoutDashboard },
         { id: 'Estratégia', label: 'Estratégia', icon: Trophy },
         { id: 'Treinamento', label: 'Treinamento', icon: Mic },
         { id: 'Radar', label: 'Radar', icon: Radar },
@@ -434,7 +434,7 @@ export default function TargetDossier({ job, userId, onClose, onStartInterview, 
                                     </div>
                                     <div className="p-6 rounded-[2rem] bg-blue-500/[0.02] border border-blue-500/10 flex flex-col">
                                         <h3 className="text-[9px] font-black text-blue-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-                                            <MessageSquare size={14} /> Listening Room
+                                            <MessageSquare size={14} /> Sala de Escuta
                                         </h3>
                                         <div className="flex-1 overflow-hidden">
                                             <ListeningRoom jobId={job.id} />

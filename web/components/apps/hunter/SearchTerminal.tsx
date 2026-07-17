@@ -53,7 +53,7 @@ export function SearchTerminal({ onScan, isScanning, statusMessage }: SearchTerm
           className="absolute right-2 top-2 bottom-2 px-6 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all flex items-center gap-2 group/btn"
         >
           {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4 group-hover/btn:scale-110" />}
-          <span className="text-[10px] font-black font-mono uppercase tracking-widest hidden md:inline">Scan</span>
+          <span className="text-[10px] font-black font-mono uppercase tracking-widest hidden md:inline">Escanear</span>
         </button>
       </form>
 

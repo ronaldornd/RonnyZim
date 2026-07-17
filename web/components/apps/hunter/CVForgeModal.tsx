@@ -52,7 +52,7 @@ export default function CVForgeModal({ coverLetter, resumeSummary, onClose }: CV
                             <h2 className="text-xl font-black text-foreground tracking-tight uppercase">Armamento Forjado</h2>
                             <div className="flex items-center gap-2">
                                 <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
-                                <span className="text-[9px] font-mono font-bold text-amber-500/70 uppercase tracking-[0.2em]">CV Forge :: Auto-Tailored Presentation</span>
+                                <span className="text-[9px] font-mono font-bold text-amber-500/70 uppercase tracking-[0.2em]">Forja de CV :: Apresentação Personalizada</span>
                             </div>
                         </div>
                     </div>
@@ -73,7 +73,7 @@ export default function CVForgeModal({ coverLetter, resumeSummary, onClose }: CV
                                 <div className="flex items-center gap-3">
                                     <div className="w-1 h-4 bg-amber-500/40 rounded-full" />
                                     <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.3em]">
-                                        Professional Objective
+                                        Objetivo Profissional
                                     </h3>
                                 </div>
                                 <button
@@ -118,7 +118,7 @@ export default function CVForgeModal({ coverLetter, resumeSummary, onClose }: CV
                     <div className="flex items-center gap-6 justify-center">
                         <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
                             <div className="w-1 h-1 rounded-full bg-zinc-700" />
-                            <span>Status: Optimized</span>
+                            <span>Status: Otimizado</span>
                         </div>
                         <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
                             <div className="w-1 h-1 rounded-full bg-zinc-700" />

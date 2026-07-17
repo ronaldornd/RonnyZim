@@ -98,9 +98,10 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
     // Mastery & Jornada com Optimismo
     const [optimisticStacks, addOptimisticStack] = useOptimistic(
         initialData?.stacks || [],
-        (state: RemoteUserStack[], { stackId, xpDelta }: { stackId: string, xpDelta: number }) => {
+        (state: RemoteUserStack[], { stackId, stackName, xpDelta }: { stackId?: string, stackName?: string, xpDelta: number }) => {
             return state.map(s => {
-                if (s.id === stackId) {
+                const isMatch = (stackId && s.id === stackId) || (stackName && s.global_stacks.name === stackName);
+                if (isMatch) {
                     let newXp = s.current_xp + xpDelta;
                     let newLevel = s.current_level;
                     const threshold = newLevel * 100;
@@ -118,7 +119,7 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
     const [optimisticQuests, addOptimisticQuest] = useOptimistic(
         initialData?.quests || [],
         (state: RemoteDailyQuest[], questId: string) => {
-            return state.map(q => q.id === questId ? { ...q, completed: true, status: 'completed' } : q);
+            return state.map(q => q.id === questId ? { ...q, completed: true, status: 'Completed' } : q);
         }
     );
 
@@ -239,11 +240,11 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
         // Iniciar Transição Otimista (React 19)
         startTransition(async () => {
             addOptimisticQuest(questId);
-            addOptimisticStack({ stackId, xpDelta: xpReward });
+            addOptimisticStack({ stackId, stackName, xpDelta: xpReward });
             
             try {
                 // Chamar Server Action
-                await completeQuestAction(userId, questId, stackId, xpReward);
+                await completeQuestAction(userId, questId, stackId, xpReward, stackName);
                 playSuccess();
             } catch (e) {
                 console.error('❌ UPLINK FAILED:', e);
@@ -713,37 +714,38 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
 
                                                     <div className="grid grid-cols-1 gap-4 overflow-y-auto">
                                                         {optimisticQuests.slice(jornadaPage * questsPerPage, (jornadaPage + 1) * questsPerPage).map((quest) => {
-                                                            const isCompleted = quest.completed || quest.status === 'completed';
+                                                            const isCompleted = quest.completed || quest.status === 'Completed';
                                                             const hasGlitch = glitchActive === quest.id;
                                                             
                                                             return (
                                                                 <motion.div
                                                                     key={quest.id}
+                                                                    onClick={() => setSelectedQuest(quest)}
                                                                     animate={hasGlitch ? {
                                                                         x: [0, -2, 2, -1, 1, 0],
                                                                         filter: ["none", "hue-rotate(90deg) brightness(1.5)", "none"],
                                                                     } : {}}
                                                                     transition={hasGlitch ? { repeat: Infinity, duration: 0.1 } : {}}
-                                                                    className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden group ${
+                                                                    className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${
                                                                         isCompleted 
                                                                             ? 'bg-emerald-500/5 border-emerald-500/20 opacity-60' 
-                                                                            : 'bg-white/[0.02] border-white/5 hover:border-white/10'
+                                                                            : 'bg-white/[0.02] border-white/5 hover:border-cyan-500/30 hover:bg-white/[0.04]'
                                                                     } ${hasGlitch ? 'border-red-500/50 bg-red-500/10' : ''}`}
                                                                 >
                                                                     <div className="flex items-start justify-between relative z-10">
                                                                         <div className="flex-1 pr-8">
                                                                             <div className="flex items-center gap-2 mb-2">
                                                                                 <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border tracking-tighter uppercase ${
-                                                                                    isCompleted ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-500'
+                                                                                    isCompleted ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
                                                                                 }`}>
-                                                                                    {quest.type}
+                                                                                    {quest.target_stack || 'OPERACIONAL'}
                                                                                 </span>
                                                                             </div>
                                                                             <h3 className={`text-sm font-black tracking-tight mb-2 ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-200 group-hover:text-cyan-400 transition-colors'}`}>
                                                                                 {quest.title}
                                                                             </h3>
-                                                                            <p className="text-[11px] text-slate-500 leading-relaxed font-medium mb-4">
-                                                                                {quest.description}
+                                                                            <p className="text-[10px] text-slate-500 leading-relaxed font-medium mb-4 line-clamp-2">
+                                                                                {quest.description.split('[STEPS]')[0].replace('[BRIEFING]', '').trim()}
                                                                             </p>
                                                                             
                                                                             <div className="flex items-center gap-4">
@@ -751,17 +753,21 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                                                                                     <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
                                                                                     <span className="text-[10px] font-black text-cyan-500 italic">+{quest.xp_reward} XP</span>
                                                                                 </div>
+                                                                                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest group-hover:text-cyan-500/60 transition-colors">Clique para ver briefing completo</span>
                                                                             </div>
                                                                         </div>
 
                                                                         <button
-                                                                            onClick={() => handleCompleteQuest(quest.id, quest.xp_reward, quest.stack_name || '', quest.stack_id || '')}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleCompleteQuest(quest.id, quest.xp_reward, quest.target_stack || '', '');
+                                                                            }}
                                                                             disabled={isCompleted || isPending || isCooldown}
                                                                             className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all ${
                                                                                 isCompleted 
                                                                                     ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
                                                                                     : 'bg-white/5 border-white/10 text-slate-600 hover:border-cyan-500/50 hover:text-cyan-400 hover:scale-110 active:scale-95'
-                                                                            } disabled:cursor-not-allowed`}
+                                                                            } disabled:cursor-not-allowed relative z-20`}
                                                                         >
                                                                             {isCompleted ? (
                                                                                 <Check className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_5px_theme(colors.cyan.400)]" />
@@ -905,6 +911,126 @@ export default function IdentityMatrix({ userId, isActive = true, profilePromise
                     ))}
                 </AnimatePresence>
             </div>
+            <AnimatePresence>
+                {selectedQuest && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8 bg-black/80 backdrop-blur-3xl">
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="w-full max-w-4xl max-h-[90vh] bg-zinc-950 border border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col shadow-[0_0_100px_rgba(6,182,212,0.15)]"
+                        >
+                            <div className="p-8 border-b border-white/5 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                                        <Zap className="w-6 h-6 text-cyan-400" />
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.4em] mb-1 block">Briefing de Operação</span>
+                                        <h2 className="text-xl font-black text-white uppercase tracking-tight">{selectedQuest.title}</h2>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setSelectedQuest(null)}
+                                    className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-500 hover:text-white transition-all"
+                                >
+                                    <XIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-10">
+                                {/* Briefing */}
+                                <section className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-1 h-4 bg-cyan-500 rounded-full" />
+                                        <h4 className="text-xs font-black text-white uppercase tracking-widest">Contexto (Briefing)</h4>
+                                    </div>
+                                    <p className="text-sm text-zinc-400 leading-relaxed font-medium italic pl-4">
+                                        {selectedQuest.description.match(/\[BRIEFING\](.*?)(?=\[STEPS\]|\[CRITERIA\]|$)/is)?.[1]?.trim() || selectedQuest.description.split('[STEPS]')[0]}
+                                    </p>
+                                </section>
+
+                                {/* Steps */}
+                                {selectedQuest.description.includes('[STEPS]') && (
+                                    <section className="space-y-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-1 h-4 bg-amber-500 rounded-full" />
+                                            <h4 className="text-xs font-black text-white uppercase tracking-widest">Protocolo de Execução</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-4">
+                                            {selectedQuest.description.match(/\[STEPS\](.*?)(?=\[CRITERIA\]|$)/is)?.[1]?.trim().split(/\d+\.\s+/).filter(Boolean).map((step, idx) => (
+                                                <div key={idx} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex gap-4 items-start group hover:border-amber-500/20 transition-all">
+                                                    <span className="text-xs font-black font-mono text-amber-500/40 group-hover:text-amber-500 transition-colors">{(idx + 1).toString().padStart(2, '0')}</span>
+                                                    <p className="text-[12px] text-zinc-400 leading-relaxed group-hover:text-zinc-200">{step.trim()}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Criteria */}
+                                {selectedQuest.description.includes('[CRITERIA]') && (
+                                    <section className="space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-1 h-4 bg-emerald-500 rounded-full" />
+                                            <h4 className="text-xs font-black text-white uppercase tracking-widest">Validação de Sucesso</h4>
+                                        </div>
+                                        <div className="ml-4 p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-[12px] text-emerald-400/80 font-mono italic">
+                                            {selectedQuest.description.match(/\[CRITERIA\](.*?)$/is)?.[1]?.trim()}
+                                        </div>
+                                    </section>
+                                )}
+                            </div>
+
+                            <div className="p-8 border-t border-white/5 bg-black/20 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-6">
+                                    <div className="text-right">
+                                        <span className="block text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Recompensa</span>
+                                        <span className="text-lg font-black text-cyan-500">+{selectedQuest.xp_reward} XP</span>
+                                    </div>
+                                    <div className="h-8 w-px bg-white/5" />
+                                    <div className="text-left">
+                                        <span className="block text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Foco Técnico</span>
+                                        <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">{selectedQuest.target_stack || 'OPERACIONAL'}</span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        handleCompleteQuest(selectedQuest.id, selectedQuest.xp_reward, selectedQuest.target_stack || '', '');
+                                        setSelectedQuest(null);
+                                    }}
+                                    disabled={selectedQuest.completed || selectedQuest.status === 'Completed' || isPending || isCooldown}
+                                    className={`px-10 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] transition-all flex items-center gap-3 ${
+                                        selectedQuest.completed || selectedQuest.status === 'Completed'
+                                            ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                            : (isPending || isCooldown)
+                                                ? 'bg-white/5 text-zinc-600 border border-white/10 cursor-not-allowed'
+                                                : 'bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.3)]'
+                                    }`}
+                                >
+                                    {selectedQuest.completed || selectedQuest.status === 'Completed' ? (
+                                        <>
+                                            <Check className="w-4 h-4" />
+                                            CONCLUÍDA
+                                        </>
+                                    ) : isPending ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            PROCESSANDO...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Zap className="w-4 h-4" />
+                                            COMPLETAR MISSÃO
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
