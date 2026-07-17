@@ -11,6 +11,7 @@ on:
     paths:
       - 'mcp-servers/**'
       - '.github/workflows/ci-mcp.yml'
+  workflow_dispatch:
 
 jobs:
   ci:

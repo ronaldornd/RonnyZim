@@ -11,6 +11,7 @@ on:
     paths:
       - 'chrome-extension/**'
       - '.github/workflows/ci-extension.yml'
+  workflow_dispatch:
 
 jobs:
   validate:
